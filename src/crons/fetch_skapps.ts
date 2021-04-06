@@ -39,7 +39,8 @@ export async function fetchSkapps(): Promise<void> {
   }
 
   // wait for all promises to be settled
-  await Promise.allSettled(promises)
+  // TODO: want to use Promise.allSettled but can't get it to work
+  await Promise.all(promises)
   const end = new Date()
   const elapsed = end.getTime() - start.getTime();
   console.log(`Iteration ened at ${end}, took ${elapsed}ms to complete.`)
@@ -49,7 +50,7 @@ async function fetchNewSkapps(
   client: SkynetClient,
   userDB: Collection<IUser>,
   user: IUser,
-) {
+): Promise<void> {
   // define some variables
   const domain = CR_DATA_DOMAIN;
   const path =`${domain}/skapps.json`

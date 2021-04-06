@@ -26,5 +26,6 @@ export async function init(): Promise<MongoDB> {
   await mongo.getCollection(COLL_USERS)
   await mongo.ensureIndex(COLL_USERS, 'user')
   
+  console.log('DB initialized.')
   return mongo;
 }

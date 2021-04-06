@@ -1,4 +1,4 @@
-import { Collection, ObjectId } from 'mongodb';
+import { BulkWriteOperation, Collection, ObjectId } from 'mongodb';
 import {SkynetClient} from 'skynet-js'
 import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_CONTENT, COLL_INTERACTIONS, COLL_USERS } from '../database';
@@ -55,7 +55,8 @@ export async function fetchEntries(): Promise<void> {
   }
 
   // wait for all promises to be settled
-  await Promise.allSettled(promises)
+  // TODO: want to use Promise.allSettled but can't get it to work
+  await Promise.all(promises)
   const end = new Date()
   const elapsed = end.getTime() - start.getTime();
   console.log(`Iteration ened at ${end}, took ${elapsed}ms to complete.`)
@@ -67,7 +68,10 @@ async function fetchNewContent(
   contentDB: Collection<IContent>,
   user: IUser,
   skapp: string
-) {
+): Promise<void> {
+  let entries: IContent[];
+  let operations: BulkWriteOperation<IContent>[];
+
   // define some variables
   const domain = CR_DATA_DOMAIN;
   const path =`${domain}/${skapp}/newcontent/index.json`
@@ -84,26 +88,29 @@ async function fetchNewContent(
 
   // download pages up until curr page
   for (let p = currPage; p < index.currPageNumber; p++) {
-    const entries = await downloadNewEntries(
+    entries = await downloadNewEntries(
       client,
       user.pubkey,
       skapp,
       `${domain}/${skapp}/newcontent/page_${p}.json`
     )
-    await contentDB.bulkWrite(entries.map(el => {
-      return { insertOne: el }
-    }))
+    for (const entry of entries) {
+      operations.push({ insertOne: { document: entry }})
+    }
   }
 
   // download entries up until curr offset
-  const entries = await downloadNewEntries(
+  entries = await downloadNewEntries(
     client,
     user.pubkey,
     skapp,
     `${domain}/${skapp}/newcontent/page_${index.currPageNumber}.json`,
     currOffset
   )
-  await contentDB.bulkWrite(entries.map(el => { return { insertOne: el } }))
+  for (const entry of entries) {
+    operations.push({ insertOne: { document: entry }})
+  }
+  await contentDB.bulkWrite(operations)
 
   // update the user state
   await userDB.updateOne({ _id: user._id }, {
@@ -120,7 +127,10 @@ async function fetchNewInteractions(
   interactionsDB: Collection<IContent>,
   user: IUser,
   skapp: string
-) {
+): Promise<void> {
+  let entries: IContent[];
+  let operations: BulkWriteOperation<IContent>[];
+  
   // define some variables
   const domain = CR_DATA_DOMAIN;
   const path =`${domain}/${skapp}/interactions/index.json`
@@ -137,26 +147,29 @@ async function fetchNewInteractions(
 
   // download pages up until curr page
   for (let p = currPage; p < index.currPageNumber; p++) {
-    const entries = await downloadNewEntries(
+    entries = await downloadNewEntries(
       client,
       user.pubkey,
       skapp,
       `${domain}/${skapp}/interactions/page_${p}.json`
     )
-    await interactionsDB.bulkWrite(entries.map(el => { return { insertOne: el } }))
+    for (const entry of entries) {
+      operations.push({ insertOne: { document: entry }})
+    }
   }
 
   // download entries up until curr offset
-  const entries = await downloadNewEntries(
+  entries = await downloadNewEntries(
     client,
     user.pubkey,
     skapp,
     `${domain}/${skapp}/interactions/page_${index.currPageNumber}.json`,
     currOffset
   )
-  await interactionsDB.bulkWrite(entries.map(el => {
-    return { insertOne: el }
-  }))
+  for (const entry of entries) {
+    operations.push({ insertOne: { document: entry }})
+  }
+  await interactionsDB.bulkWrite(operations)
 
   // update the user state
   await userDB.updateOne({ _id: user._id }, {
@@ -174,7 +187,7 @@ async function downloadNewEntries(
   path: string,
   offset: number = 0
 ): Promise<IContent[]> {
-  const page: IPage<IRawEntry> = await client.db.getJSON(user, path) as unknown as any;
+  const page = await client.db.getJSON(user, path) as unknown as IPage<IRawEntry>;
   return page.entries.slice(offset).map(el => {
     return {
       _id: new ObjectId(),

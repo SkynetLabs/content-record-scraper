@@ -4,4 +4,4 @@ import { init as initCrons } from './crons'
 (async () => {
   await initDB();
   await initCrons();
-})
+})();

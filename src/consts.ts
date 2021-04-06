@@ -1,3 +1,6 @@
+
+// tslint:disable: no-var-requires
+// tslint:disable: no-require-imports
 require('dotenv').config()
 
 export const MONGO_CONNECTION_STRING = process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017'

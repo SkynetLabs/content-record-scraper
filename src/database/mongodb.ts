@@ -32,15 +32,14 @@ export class MongoDB {
     this.client = client;
   }
 
-  public async connect() {
+  public async connect(): Promise<void> {
     const options: MongoClientOptions = {
       sslValidate: true,
       keepAlive: true,
       keepAliveInitialDelay: 1000,
-      reconnectTries: Number.MAX_VALUE,
-      reconnectInterval: 1000,
       connectTimeoutMS: 1000,
       useNewUrlParser: true,
+      useUnifiedTopology: true
     };
 
     this.client = await MongoClient.connect(this.connectionString, options);
@@ -57,7 +56,7 @@ export class MongoDB {
 
   public async ensureIndex(
     collectionName: string,
-    fieldOrSpec: string | any,
+    fieldOrSpec: string | unknown,
     options?: IndexOptions
   ): Promise<string> {
     const collection = await this.ensureCollection(collectionName);
