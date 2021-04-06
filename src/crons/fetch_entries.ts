@@ -59,7 +59,7 @@ export async function fetchEntries(): Promise<void> {
   await Promise.all(promises)
   const end = new Date()
   const elapsed = end.getTime() - start.getTime();
-  console.log(`Iteration ened at ${end}, took ${elapsed}ms to complete.`)
+  console.log(`Iteration ended at ${end}, took ${elapsed}ms to complete.`)
 }
 
 async function fetchNewContent(
