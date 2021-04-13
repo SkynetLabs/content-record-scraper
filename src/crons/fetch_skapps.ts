@@ -5,18 +5,11 @@ import { COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { IUser } from '../database/types';
 import { IDictionary } from './types';
+import { downloadFile } from './utils';
 
-// fetchSkapps is a simple scraping algorithm that:
-//
-// - loops over all known users and downloads their skapp dict
-// - for every user loop over all known skapps
-// - for every skapp download all known index files
-// - update the user's state with the updated offsets
-// - if we find the user has new entries, download them and update our state
+// fetchSkapps is a simple scraping algorithm that scrapes all known users
+// for new skapps those users have been using.
 export async function fetchSkapps(): Promise<void> {
-  const start = new Date();
-  console.log(`Iteration started at ${start}.`)
-
   // create a client
   const client = new SkynetClient("https://siasky.net");
   
@@ -41,9 +34,6 @@ export async function fetchSkapps(): Promise<void> {
   // wait for all promises to be settled
   // TODO: want to use Promise.allSettled but can't get it to work
   await Promise.all(promises)
-  const end = new Date()
-  const elapsed = end.getTime() - start.getTime();
-  console.log(`Iteration ended at ${end}, took ${elapsed}ms to complete.`)
 }
 
 async function fetchNewSkapps(
@@ -63,11 +53,17 @@ async function fetchNewSkapps(
   }
   
   // download the dictionary
-  const dict = await client.db.getJSON(userPK, path) as unknown as IDictionary;
+  let added = 0;
+  const dict = await downloadFile<IDictionary>(client, userPK, path)
   for (const skapp of Object.keys(dict)) {
     if (!map[skapp]) {
+      added++;
       user.skapps.push(skapp)
     }
+  }
+
+  if (added) {
+    console.log(`${added} skapps added for user ${user.pubkey}`)
   }
 
   // update the user object
