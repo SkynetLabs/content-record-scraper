@@ -95,4 +95,5 @@ db.getCollection('users').insertOne({
 ```
 
 You can do this through the mongo shell or use a mongo client like Robo3T or
-MongoDB Compass.
+MongoDB Compass. For convenience the above users is inserted automatically when
+the scraper starts.

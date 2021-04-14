@@ -1,6 +1,5 @@
 import { init as initDB } from './database'
 import { init as initCrons } from './crons'
-import { SkynetClient } from 'skynet-js';
 
 (async () => {
   try {

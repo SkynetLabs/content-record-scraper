@@ -1,7 +1,7 @@
 import { CronJob } from 'cron';
-// import { fetchSkapps } from './fetch_skapps';
+import { fetchSkapps } from './fetch_skapps';
 import { fetchNewContent } from './fetch_newcontent';
-// import { fetchInteractions } from './fetch_interactions';
+import { fetchInteractions } from './fetch_interactions';
 
 type CronHandler = () => Promise<void>
 
@@ -13,15 +13,15 @@ const CRON_TIME_DEV = '0 * * * * *' // every minute".
 export async function init(): Promise<void> {
   console.log('Starting cronjobs...');
 
-  // new CronJob(
-  //   DEV_ENABLED ? CRON_TIME_DEV : CRON_TIME,
-  //   () => { logIterationTime('fetchSkapps', fetchSkapps) },
-  //   null,
-  //   true,
-  //   'Europe/Brussels',
-  //   undefined,
-  //   true
-  // ).start();
+  new CronJob(
+    DEV_ENABLED ? CRON_TIME_DEV : CRON_TIME,
+    () => { logIterationTime('fetchSkapps', fetchSkapps) },
+    null,
+    true,
+    'Europe/Brussels',
+    undefined,
+    true
+  ).start();
 
   new CronJob(
     DEV_ENABLED ? CRON_TIME_DEV : CRON_TIME,
@@ -33,15 +33,15 @@ export async function init(): Promise<void> {
     true
   ).start();
 
-  // new CronJob(
-  //   DEV_ENABLED ? CRON_TIME_DEV : CRON_TIME,
-  //   () => { logIterationTime('fetchInteractions', fetchInteractions) },
-  //   null,
-  //   true,
-  //   'Europe/Brussels',
-  //   undefined,
-  //   true
-  // ).start();
+  new CronJob(
+    DEV_ENABLED ? CRON_TIME_DEV : CRON_TIME,
+    () => { logIterationTime('fetchInteractions', fetchInteractions) },
+    null,
+    true,
+    'Europe/Brussels',
+    undefined,
+    true
+  ).start();
 }
 
 async function logIterationTime(name: string, handler: CronHandler): Promise<void> {

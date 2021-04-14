@@ -67,7 +67,7 @@ async function fetchEntries(
   const index = await downloadFile<IIndex>(client, userPK, path)
 
   // download pages up until curr page
-  for (let p = currPage; p < index.currPageNumber; p++) {
+  for (let p = Number(currPage); p < index.currPageNumber; p++) {
     entries = await downloadNewEntries(
       client,
       user.pubkey,
@@ -85,7 +85,7 @@ async function fetchEntries(
     user.pubkey,
     skapp,
     `${domain}/${skapp}/interactions/page_${index.currPageNumber}.json`,
-    currOffset
+    Number(currOffset)
   )
   for (const entry of entries) {
     operations.push({ insertOne: { document: entry }})
