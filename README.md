@@ -8,24 +8,25 @@ Content Record and persist those in a Mongo database.
 
 ## Data Model
 
-In the mongo database there will be three collections: 
-- `content`
-- `interactions`
+In the mongo database there will only be two collections:
+
+- `entries`
 - `users`
 
-In the `content` collection we keep track of all of the content that gets
-created, in the `interactions` collection we keep track of all the interactions
-that occur with that content. In the `users` collection we keep track of all the
-users and we also keep state. This state prevents the scraper from unnecessarily
-re-indexing already indexed content and/or interactions.
+In the `entries` collection we keep track of all of the content that gets
+created, alongside all the interactions that occur with that content. In the
+`users` collection we keep track of all the users and we also keep state. This
+state prevents the scraper from unnecessarily re-indexing already indexed
+content and/or interactions.
 
 The users are very important as they will need to be feeded to the scraper. The
 scraper does not extend its user base on its own, it will only scan the content
 records for the users it knows, and keep those up-to-date.
 
-## Architecture 
+## Architecture
 
 The scraper is built around three cronjobs:
+
 - fetch skapps
 - fetch new content
 - fetch interactions
@@ -84,13 +85,13 @@ This is important if you want to debug the scraper. To do so, simply insert the
 following record in the `users` collection of the Mongo DB:
 
 ```json
-db.getCollection('users').insertOne({
-    "pubkey" : "f301891b7e41b107beefe91a133d6efa8c7b0dfe0f5e39650c34b8311c365d39",
-    "skapps" : [],
-    "newContentCurrPage" : NumberInt(0),
-    "newContentCurrNumEntries" : NumberInt(0),
-    "contentInteractionsCurrPage" : NumberInt(0),
-    "contentInteractionsNumEntries" : NumberInt(0)
+db.getCollection("users").insertOne({
+  "pubkey": "f301891b7e41b107beefe91a133d6efa8c7b0dfe0f5e39650c34b8311c365d39",
+  "skapps": [],
+  "newContentCurrPage": NumberInt(0),
+  "newContentCurrNumEntries": NumberInt(0),
+  "contentInteractionsCurrPage": NumberInt(0),
+  "contentInteractionsNumEntries": NumberInt(0)
 })
 ```
 

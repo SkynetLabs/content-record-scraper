@@ -3,8 +3,7 @@ import { TEST_USER_PUBKEY } from '../consts'
 import { MongoDB } from "./mongodb"
 import { IUser } from "./types"
 
-export const COLL_CONTENT = 'content'
-export const COLL_INTERACTIONS = 'interactions'
+export const COLL_ENTRIES = 'entries'
 export const COLL_USERS = 'users'
 
 export async function init(): Promise<MongoDB> {
@@ -13,17 +12,12 @@ export async function init(): Promise<MongoDB> {
 
   // ensure db schema
 
-  // creations
-  await mongo.getCollection(COLL_CONTENT)
-  await mongo.ensureIndex(COLL_CONTENT, 'skapp')
-  await mongo.ensureIndex(COLL_CONTENT, 'skylink')
-  await mongo.ensureIndex(COLL_CONTENT, 'user')
-
-  // interactions
-  await mongo.getCollection(COLL_INTERACTIONS)
-  await mongo.ensureIndex(COLL_INTERACTIONS, 'skapp')
-  await mongo.ensureIndex(COLL_INTERACTIONS, 'skylink')
-  await mongo.ensureIndex(COLL_INTERACTIONS, 'user')
+  // entries
+  await mongo.getCollection(COLL_ENTRIES)
+  await mongo.ensureIndex(COLL_ENTRIES, 'type')
+  await mongo.ensureIndex(COLL_ENTRIES, 'skapp')
+  await mongo.ensureIndex(COLL_ENTRIES, 'skylink')
+  await mongo.ensureIndex(COLL_ENTRIES, 'user')
 
   // users
   const users = await mongo.getCollection<IUser>(COLL_USERS)

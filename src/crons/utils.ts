@@ -1,9 +1,10 @@
 import { ObjectId } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { IContent } from '../database/types';
+import { EntryType, IContent } from '../database/types';
 import { IPage, IRawEntry } from './types';
 
 export async function downloadNewEntries(
+  type: EntryType,
   client: SkynetClient,
   user: string,
   skapp: string,
@@ -14,11 +15,13 @@ export async function downloadNewEntries(
   return page.entries.slice(offset).map(el => {
     return {
       _id: new ObjectId(),
+      type,
       user,
       skapp,
       skylink: el.content,
       metadata: el.metadata,
-      created: new Date(el.timestamp),
+      createdAt: new Date(el.timestamp),
+      scrapedAt: new Date(),
     }
   })
 }

@@ -1,9 +1,9 @@
 import { BulkWriteOperation, Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
-import { COLL_CONTENT, COLL_USERS } from '../database';
+import { COLL_ENTRIES, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { IContent, IUser } from '../database/types';
+import { EntryType, IContent, IUser } from '../database/types';
 import { IIndex } from './types';
 import { downloadFile, downloadNewEntries } from './utils';
 
@@ -16,7 +16,7 @@ export async function fetchNewContent(): Promise<void> {
   // create a connection with the database and fetch all collections
   const db = await MongoDB.Connection();
   const usersDB = await db.getCollection<IUser>(COLL_USERS);
-  const contentDB = await db.getCollection<IContent>(COLL_CONTENT);
+  const entriesDB = await db.getCollection<IContent>(COLL_ENTRIES);
 
   // fetch a user cursor
   const userCursor = usersDB.find();
@@ -30,7 +30,7 @@ export async function fetchNewContent(): Promise<void> {
       promises.push(fetchEntries(
         client,
         usersDB,
-        contentDB,
+        entriesDB,
         user,
         skapp
       ))
@@ -45,7 +45,7 @@ export async function fetchNewContent(): Promise<void> {
 async function fetchEntries(
   client: SkynetClient,
   userDB: Collection<IUser>,
-  contentDB: Collection<IContent>,
+  entriesDB: Collection<IContent>,
   user: IUser,
   skapp: string
 ): Promise<void> {
@@ -69,6 +69,7 @@ async function fetchEntries(
   // download pages up until curr page
   for (let p = Number(currPage); p < index.currPageNumber; p++) {
     entries = await downloadNewEntries(
+      EntryType.NEWCONTENT,
       client,
       user.pubkey,
       skapp,
@@ -81,6 +82,7 @@ async function fetchEntries(
 
   // download entries up until curr offset
   entries = await downloadNewEntries(
+    EntryType.NEWCONTENT,
     client,
     user.pubkey,
     skapp,
@@ -95,7 +97,7 @@ async function fetchEntries(
   const numEntries = operations.length
   if (numEntries) {
     console.log(`${numEntries} new content entries found for user ${user.pubkey}`)
-    await contentDB.bulkWrite(operations)
+    await entriesDB.bulkWrite(operations)
   }
 
   // update the user state

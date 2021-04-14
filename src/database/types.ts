@@ -1,14 +1,20 @@
 import { ObjectId } from "mongodb";
 import { Int32 as NumberInt } from 'mongodb'
 
+export enum EntryType {
+  NEWCONTENT = 'newcontent',
+  INTERACTION = 'interaction',
+}
 export interface IContent {
   _id: ObjectId;
 
+  type: EntryType;
   user: string;
   skapp: string;
   skylink: string;
   metadata: object;
-  created: Date;
+  createdAt: Date;
+  scrapedAt: Date;
 }
 
 export interface IInteraction extends IContent { }
