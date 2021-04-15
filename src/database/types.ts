@@ -22,7 +22,7 @@ export interface IInteraction extends IContent { }
 export interface IUser {
   _id?: ObjectId;
   
-  pubkey: string;
+  userPK: string;
   skapps: string[];
 
   newContentCurrPage: NumberInt;

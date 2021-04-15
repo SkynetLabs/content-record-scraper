@@ -18,9 +18,9 @@ export async function downloadNewEntries(
       type,
       user,
       skapp,
-      skylink: el.content,
+      skylink: el.skylink,
       metadata: el.metadata,
-      createdAt: new Date(el.timestamp),
+      createdAt: new Date(el.timestamp*1000),
       scrapedAt: new Date(),
     }
   })
@@ -31,12 +31,9 @@ export async function downloadFile<T>(
   user: string,
   path: string,
 ): Promise<T> {
-  console.log('getting data', user, path)
   const response = await client.file.getJSON(user, path)
   if (!response || !response.data) {
-    console.log(response)
     throw new Error(`Could not find file for user '${user}' at path '${path}'`)
   }
-  console.log('found data', path, response.data)
   return response.data as unknown as T;
 }

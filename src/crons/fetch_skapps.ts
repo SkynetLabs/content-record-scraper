@@ -9,7 +9,7 @@ import { downloadFile } from './utils';
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
-export async function fetchSkapps(): Promise<void> {
+export async function fetchSkapps(): Promise<number> {
   // create a client
   const client = new SkynetClient("https://siasky.net");
   
@@ -32,19 +32,27 @@ export async function fetchSkapps(): Promise<void> {
   }
 
   // wait for all promises to be settled
-  // TODO: want to use Promise.allSettled but can't get it to work
-  await Promise.all(promises)
+  const results = await Promise.allSettled<number[]>(promises)
+  let added = 0;
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      added += result.value;
+    } else {
+      console.log('fetchSkapps err: ', result.reason)
+    }
+  }
+  return added
 }
 
 async function fetchNewSkapps(
   client: SkynetClient,
   userDB: Collection<IUser>,
   user: IUser,
-): Promise<void> {
+): Promise<number> {
   // define some variables
   const domain = CR_DATA_DOMAIN;
   const path =`${domain}/skapps.json`
-  const userPK = user.pubkey
+  const { userPK } = user
 
   // map all the skapnames
   const map = {};
@@ -62,10 +70,8 @@ async function fetchNewSkapps(
     }
   }
 
-  if (added) {
-    console.log(`${added} skapps added for user ${user.pubkey}`)
-  }
-
   // update the user object
-  await userDB.updateOne({ _id: user._id }, { $set: { skapps: user.skapps }})
+  await userDB.updateOne({ _id: user._id }, { $set: { skapps: user.skapps } })
+  
+  return added;
 }

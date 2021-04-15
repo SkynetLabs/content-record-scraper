@@ -23,6 +23,10 @@ The users are very important as they will need to be feeded to the scraper. The
 scraper does not extend its user base on its own, it will only scan the content
 records for the users it knows, and keep those up-to-date.
 
+In the future we might extend the scraper with an extra cron job that scrapes
+friends from friend list on Skyfeed to have some form of user discovery
+mechanism built in.
+
 ## Architecture
 
 The scraper is built around three cronjobs:
@@ -30,6 +34,10 @@ The scraper is built around three cronjobs:
 - fetch skapps
 - fetch new content
 - fetch interactions
+
+The cronjobs run every 15 minutes, however they are guarded by a mutex so if a
+cron is not finished after 15 minutes, it will not spin a new worker, instead it
+will wait until the next iteration.
 
 `Fetch skapps` one has only one job which is to update the user's skapp list. This
 list of skapp names is kept in a separate json file by the content record DAC.
@@ -64,17 +72,13 @@ scraper will log its current env variables when it boots.
 
 ## Usage
 
-There's a script you can run to start the scraper with. It's located in the
-`scripts` directory under `start.sh`. There's also a `Dockerfile` should you
-want to run the scraper as a docker container.
-
 ```shell
-// start mongo
 docker-compose up -d
-
-// start scraper
-npm run start
 ```
+
+If you want to develop or debug manually, you can comment out the scraper
+service and connect only to mongo. Then however you have to start the scraper
+manually by executing `start.sh` in `scripts`.
 
 NOTE: the scraper runs off of user data that needs to be feeded to the scraper.
 That data are users, so there is a user discovery part that is not included in
@@ -96,5 +100,5 @@ db.getCollection("users").insertOne({
 ```
 
 You can do this through the mongo shell or use a mongo client like Robo3T or
-MongoDB Compass. For convenience the above users is inserted automatically when
-the scraper starts.
+MongoDB Compass. **For convenience the above users is inserted automatically when
+the scraper starts.**

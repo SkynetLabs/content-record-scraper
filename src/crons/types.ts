@@ -22,7 +22,7 @@ export interface IPage<IEntry> {
 }
 
 export interface IRawEntry {
-  content: string;    // skylink
+  skylink: string;    // skylink
   metadata: object;   // should be valid JSON
   timestamp: number;  // unix timestamp of recording
 }

@@ -29,10 +29,10 @@ export async function init(): Promise<MongoDB> {
   try {
     const skapps: string[] = []
     await users.updateOne(
-      { pubkey: TEST_USER_PUBKEY },
+      { userPK: TEST_USER_PUBKEY },
       {
-        $set: {
-          pubkey: TEST_USER_PUBKEY,
+        $setOnInsert: {
+          userPK: TEST_USER_PUBKEY,
           skapps,
           newContentCurrPage : new NumberInt(0),
           newContentCurrNumEntries : new NumberInt(0),
@@ -42,11 +42,10 @@ export async function init(): Promise<MongoDB> {
       },
       { upsert: true }
     )
+    console.log(`Test user '${TEST_USER_PUBKEY}' inserted.`)
   } catch (error) {
     console.log('Failed upserting test user', error);
   }
-  
-  console.log(`Test user '${TEST_USER_PUBKEY}' inserted.`)
 
   return mongo;
 }

@@ -9,7 +9,7 @@ import { downloadFile, downloadNewEntries } from './utils';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users
 // for content interaction entries.
-export async function fetchInteractions(): Promise<void> {
+export async function fetchInteractions(): Promise<number> {
   // create a client
   const client = new SkynetClient(SKYNET_PORTAL_URL);
   
@@ -38,8 +38,16 @@ export async function fetchInteractions(): Promise<void> {
   }
 
   // wait for all promises to be settled
-  // TODO: want to use Promise.allSettled but can't get it to work
-  await Promise.all(promises)
+  const results = await Promise.allSettled<number[]>(promises)
+  let added = 0;
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      added += result.value;
+    } else {
+      console.log('fetchInteractions err: ', result.reason)
+    }
+  }
+  return added
 }
 
 async function fetchEntries(
@@ -48,14 +56,14 @@ async function fetchEntries(
   entriesDB: Collection<IContent>,
   user: IUser,
   skapp: string
-): Promise<void> {
+): Promise<number> {
   let entries: IContent[];
-  let operations: BulkWriteOperation<IContent>[];
+  let operations: BulkWriteOperation<IContent>[] = [];
   
   // define some variables
   const domain = CR_DATA_DOMAIN;
   const path =`${domain}/${skapp}/interactions/index.json`
-  const userPK = user.pubkey
+  const { userPK } = user
 
   // grab some info from the user object
   const {
@@ -71,7 +79,7 @@ async function fetchEntries(
     entries = await downloadNewEntries(
       EntryType.INTERACTION,
       client,
-      user.pubkey,
+      userPK,
       skapp,
       `${domain}/${skapp}/interactions/page_${p}.json`
     )
@@ -84,7 +92,7 @@ async function fetchEntries(
   entries = await downloadNewEntries(
     EntryType.INTERACTION,
     client,
-    user.pubkey,
+    userPK,
     skapp,
     `${domain}/${skapp}/interactions/page_${index.currPageNumber}.json`,
     Number(currOffset)
@@ -96,7 +104,6 @@ async function fetchEntries(
   // insert entries
   const numEntries = operations.length
   if (numEntries) {
-    console.log(`${numEntries} new interaction entries found for user ${user.pubkey}`)
     await entriesDB.bulkWrite(operations)
   }
 
@@ -107,4 +114,6 @@ async function fetchEntries(
       contentInteractionsNumEntries: index.currPageNumEntries,
     }
   })
+
+  return operations.length;
 }
