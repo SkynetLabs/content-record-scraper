@@ -7,7 +7,7 @@
     "node": "14"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "rimraf dist && tsc",
     "lint": "tslint --project tsconfig.json",
     "watch": "tsnodemon -x 'ts-node src/index.ts'",
     "start": "ts-node src/index.ts"
@@ -17,18 +17,19 @@
   "dependencies": {
     "@types/cron": "^1.7.2",
     "@types/mongodb": "^3.6.12",
-    "@types/node": "^12.20.7",
+    "@types/node": "^12.20.10",
     "async-mutex": "^0.3.1",
     "axios": "^0.19.2",
     "cron": "^1.8.2",
     "dotenv": "^8.2.0",
-    "mongodb": "^3.6.5",
-    "skynet-js": "^4.0.0-beta",
-    "ts-node": "^8.10.2",
-    "tslint": "^5.20.1",
-    "typescript": "^3.9.9"
+    "mongodb": "^3.6.6",
+    "skynet-js": "^4.0.1-beta"
   },
   "devDependencies": {
+    "ts-node": "^8.10.2",
+    "tslint": "^5.20.1",
+    "typescript": "^3.9.9",
+    "rimraf": "^3.0.2",
     "tsnodemon": "^1.2.2"
   }
 }

@@ -64,9 +64,23 @@ async function fetchNewSkapps(
   let added = 0;
   const dict = await downloadFile<IDictionary>(client, userPK, path)
   for (const skapp of Object.keys(dict)) {
-    if (!map[skapp]) {
+    if (map[skapp]) {
+      continue; // already exists
+    }
+
+    // Try to download the new content index file, if that does not succeed, we
+    // don't bother adding the skapp to the users's skapp list. This prevents a
+    // lot of excess calls that time out in the other cronjobs.
+    //
+    // NOTE: this is not an issue because we ensure the file hierarchy, this
+    // might change in the future. For now though this is fine.
+    try {
+      const ncIndexPath = `${CR_DATA_DOMAIN}/${skapp}/newcontent/index.json`
+      await downloadFile(client, userPK, ncIndexPath)
       added++;
       user.skapps.push(skapp)
+    } catch (error) {
+      console.log('Could not add skapp, failed do download index', skapp, error)
     }
   }
 

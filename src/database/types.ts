@@ -8,8 +8,10 @@ export enum EntryType {
 export interface IContent {
   _id: ObjectId;
 
+  dac: string; // data domain
   type: EntryType;
-  user: string;
+  
+  userPK: string;
   skapp: string;
   skylink: string;
   metadata: object;

@@ -1,14 +1,15 @@
 version: "3.6"
 
 services:
-  content-record-scraper:
+  scraper:
     image: "skynetlabs/content-record-scraper"
     container_name: content-record-scraper
     depends_on:
-      - 'mongo'
+      - "mongo"
     environment:
-      MONGO_CONNECTION_STRING: "mongodb://mongo:27017"
+      CR_DATA_DOMAIN: "crqa.hns"
       DEBUG_ENABLED: "false"
+      MONGO_CONNECTION_STRING: "mongodb://mongo:27017"
   mongo:
     image: "bitnami/mongodb:4.2"
     container_name: mongo

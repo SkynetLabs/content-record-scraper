@@ -28,7 +28,7 @@ export async function init(): Promise<MongoDB> {
   // add test user
   try {
     const skapps: string[] = []
-    await users.updateOne(
+    const { upsertedCount } = await users.updateOne(
       { userPK: TEST_USER_PUBKEY },
       {
         $setOnInsert: {
@@ -42,7 +42,9 @@ export async function init(): Promise<MongoDB> {
       },
       { upsert: true }
     )
-    console.log(`Test user '${TEST_USER_PUBKEY}' inserted.`)
+    if (upsertedCount) {
+      console.log(`Test user '${TEST_USER_PUBKEY}' inserted.`)
+    }
   } catch (error) {
     console.log('Failed upserting test user', error);
   }

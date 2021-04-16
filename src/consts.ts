@@ -14,8 +14,8 @@ export const TEST_USER_PUBKEY =
   'f301891b7e41b107beefe91a133d6efa8c7b0dfe0f5e39650c34b8311c365d39'
 
 export const CR_DATA_DOMAIN =
-  process.env.CR_DATA_DOMAIN || 'graio.hns' // 'crqa.hns'
+  process.env.CR_DATA_DOMAIN || 'crqa.hns'
 
 export const SKYNET_PORTAL_URL = 'https://siasky.net'
 
-export const DEBUG_ENABLED = process.env.DEBUG === 'true' || false;
+export const DEBUG_ENABLED = process.env.DEBUG_ENABLED === 'true';

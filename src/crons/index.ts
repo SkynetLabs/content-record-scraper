@@ -11,11 +11,13 @@ const CRON_TIME = '0 */15 * * * *' // every 15'
 const CRON_TIME_DEV = '0 * * * * *' // every minute".
 
 export async function init(): Promise<void> {
-  console.log('Starting cronjobs...');
+  const cronTime = DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME;
+
+  console.log(`Starting cronjobs on schedule '${cronTime}'...`);
 
   const fetchSkappsMutex = new Mutex();
   new CronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME,
+    cronTime,
     () => {
       tryRun(
         'fetchSkapps',
@@ -32,7 +34,7 @@ export async function init(): Promise<void> {
 
   const fetchNewContentMutex = new Mutex();
   new CronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME,
+    cronTime,
     () => {
       tryRun(
         'fetchNewContent',
@@ -49,7 +51,7 @@ export async function init(): Promise<void> {
 
   const fetchInteractionsMutex = new Mutex();
   new CronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME,
+    cronTime,
     () => {
       tryRun(
         'fetchInteractions',
