@@ -38,7 +38,7 @@ export async function fetchSkapps(): Promise<number> {
     if (result.status === "fulfilled") {
       added += result.value;
     } else {
-      console.log('fetchSkapps err: ', result.reason)
+      console.log(`${new Date().toLocaleString()}: fetchSkapps error: '`, result.reason)
     }
   }
   return added
@@ -62,7 +62,7 @@ async function fetchNewSkapps(
   
   // download the dictionary
   let added = 0;
-  const dict = await downloadFile<IDictionary>(client, userPK, path)
+  const dict = await downloadFile<IDictionary<boolean>>(client, userPK, path)
   for (const skapp of Object.keys(dict)) {
     if (map[skapp]) {
       continue; // already exists
@@ -80,7 +80,7 @@ async function fetchNewSkapps(
       added++;
       user.skapps.push(skapp)
     } catch (error) {
-      console.log('Could not add skapp, failed do download index', skapp, error)
+      console.log(`${new Date().toLocaleString()}: Could not add skapp, failed to download index'`, skapp, error)
     }
   }
 

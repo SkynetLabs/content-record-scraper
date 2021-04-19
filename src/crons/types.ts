@@ -1,5 +1,19 @@
-export interface IDictionary {
-  [key: string]: boolean
+export interface IDictionary<T> {
+  [key: string]: T
+}
+
+export interface IUserProfile {
+  username: string;
+  aboutMe: string;
+  location: string;
+  avatar: string;
+  dapps: IDictionary<IDapp>;
+}
+
+export interface IDapp {
+  url: string;
+  publicKey: string;
+  img: string;
 }
 
 export interface IIndex {

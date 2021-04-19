@@ -44,7 +44,7 @@ export async function fetchInteractions(): Promise<number> {
     if (result.status === "fulfilled") {
       added += result.value;
     } else {
-      console.log('fetchInteractions err: ', result.reason)
+      console.log(`${new Date().toLocaleString()}: fetchInteractions error: '`, result.reason)
     }
   }
   return added

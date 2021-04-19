@@ -1,6 +1,11 @@
 import { ObjectId } from "mongodb";
 import { Int32 as NumberInt } from 'mongodb'
 
+export enum EventType {
+  ITERATION_SUCCESS = 'ITERATION_SUCCESS',
+  ITERATION_FAILURE = 'ITERATION_FAILURE',
+}
+
 export enum EntryType {
   NEWCONTENT = 'newcontent',
   INTERACTION = 'interaction',
@@ -32,4 +37,13 @@ export interface IUser {
 
   contentInteractionsCurrPage: NumberInt;
   contentInteractionsNumEntries: NumberInt;
+}
+
+export interface IEvent {
+  _id?: ObjectId;
+  type: EventType;
+  description?: string;
+  metadata?: object;
+  error?: string;
+  createdAt: Date;
 }

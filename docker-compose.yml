@@ -1,4 +1,4 @@
-version: "3.6"
+version: "3.7"
 
 services:
   scraper:
@@ -10,6 +10,17 @@ services:
       CR_DATA_DOMAIN: "crqa.hns"
       DEBUG_ENABLED: "false"
       MONGO_CONNECTION_STRING: "mongodb://mongo:27017"
+  # leaderboard-api:
+  #   image: "skynetlabs/leaderboard-api"
+  #   container_name: leaderboard-api
+  #   depends_on:
+  #     - "mongo"
+  #   environment:
+  #     MONGO_CONNECTION_STRING: "mongodb://mongo:27017"
+  #     DEBUG_ENABLED: "false"
+  #     PORT: "4000"
+  #   ports:
+  #     - "4000:4000"
   mongo:
     image: "bitnami/mongodb:4.2"
     container_name: mongo

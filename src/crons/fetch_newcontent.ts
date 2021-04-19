@@ -44,7 +44,7 @@ export async function fetchNewContent(): Promise<number> {
     if (result.status === "fulfilled") {
       added += result.value;
     } else {
-      console.log('fetchNewContent err: ', result.reason)
+      console.log(`${new Date().toLocaleString()}: fetchNewContent error: '`, result.reason)
     }
   }
   return added
