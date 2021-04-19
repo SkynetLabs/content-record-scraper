@@ -82,6 +82,10 @@ async function fetchUsers(
 ): Promise<number> {
   // fetch user's profile
   const response = await client.registry.getEntry(userPK, DATAKEY_PROFILE)
+  if (!response || !response.entry) {
+    throw new Error(`Could not find profile for user '${userPK}'`)
+  }
+
   const content = await client.getFileContent<string>(response.entry.data)
   const profileStr = content.data
   const profile = JSON.parse(profileStr) as IUserProfile

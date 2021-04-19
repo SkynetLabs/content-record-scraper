@@ -35,7 +35,7 @@ export async function init(): Promise<void> {
       )
     }
   );
-  
+
   const fetchSkappsMutex = new Mutex();
   startCronJob(
     cronTime,
