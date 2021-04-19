@@ -4,6 +4,10 @@ import { Int32 as NumberInt } from 'mongodb'
 export enum EventType {
   ITERATION_SUCCESS = 'ITERATION_SUCCESS',
   ITERATION_FAILURE = 'ITERATION_FAILURE',
+
+  FETCHNEWCONTENT_ERROR = 'FETCHNEWCONTENT_ERROR',
+  FETCHINTERACTIONS_ERROR = 'FETCHINTERACTIONS_ERROR',
+  FETCHSKAPPS_ERROR = 'FETCHSKAPPS_ERROR'
 }
 
 export enum EntryType {
@@ -37,6 +41,8 @@ export interface IUser {
 
   contentInteractionsCurrPage: NumberInt;
   contentInteractionsNumEntries: NumberInt;
+
+  createdAt: Date;
 }
 
 export interface IEvent {

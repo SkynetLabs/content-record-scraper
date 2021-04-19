@@ -1,9 +1,10 @@
 import { BulkWriteOperation, Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
-import { COLL_ENTRIES, COLL_USERS } from '../database';
+import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EntryType, IContent, IUser } from '../database/types';
+import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
+import { tryLogEvent } from '../database/utils';
 import { IIndex } from './types';
 import { downloadFile, downloadNewEntries } from './utils';
 
@@ -17,7 +18,8 @@ export async function fetchInteractions(): Promise<number> {
   const db = await MongoDB.Connection();
   const usersDB = await db.getCollection<IUser>(COLL_USERS);
   const entriesDB = await db.getCollection<IContent>(COLL_ENTRIES);
-
+  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+  
   // fetch a user cursor
   const userCursor = usersDB.find();
 
@@ -44,6 +46,11 @@ export async function fetchInteractions(): Promise<number> {
     if (result.status === "fulfilled") {
       added += result.value;
     } else {
+      tryLogEvent(eventsDB,{
+        type: EventType.FETCHINTERACTIONS_ERROR,
+        error: result.reason,
+        createdAt: new Date(),
+      })
       console.log(`${new Date().toLocaleString()}: fetchInteractions error: '`, result.reason)
     }
   }

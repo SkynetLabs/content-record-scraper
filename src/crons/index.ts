@@ -5,6 +5,7 @@ import { DEBUG_ENABLED } from '../consts';
 import { COLL_EVENTS } from '../database/index';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent } from '../database/types';
+import { tryLogEvent } from '../database/utils';
 import { fetchInteractions } from './fetch_interactions';
 import { fetchNewContent } from './fetch_newcontent';
 import { fetchSkapps } from './fetch_skapps';
@@ -107,7 +108,7 @@ async function tryRun(
     console.log(`${end.toLocaleString()}: ${name} ended, took ${elapsed}ms.`)
 
     // insert event
-    await eventsDB.insertOne({
+    tryLogEvent(eventsDB, {
       type: EventType.ITERATION_SUCCESS,
       metadata: { cron: name, duration: elapsed, success: true, added } ,
       createdAt: new Date(),
@@ -116,7 +117,7 @@ async function tryRun(
     console.log(`${start.toLocaleString()}: ${name} failed, error:`, error)
 
     // insert event
-    await eventsDB.insertOne({
+    tryLogEvent(eventsDB, {
       type: EventType.ITERATION_FAILURE,
       error: error.message,
       metadata: { cron: name, error } ,
@@ -127,7 +128,7 @@ async function tryRun(
   }
 }
 
-function startCronJob(cronTime: string, cronCommand: CronCommand) {
+function startCronJob(cronTime: string, cronCommand: CronCommand): void {
   new CronJob(
     cronTime,
     cronCommand,

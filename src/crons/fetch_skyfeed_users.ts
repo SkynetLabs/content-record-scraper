@@ -1,10 +1,10 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { SKYFEED_SEED_USER_PUBKEY, SKYNET_PORTAL_URL } from '../consts';
-import { COLL_USERS } from '../database';
+import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { IUser } from '../database/types';
-import { upsertUser } from '../database/utils';
+import { IUser, IEvent, EventType } from '../database/types';
+import { tryLogEvent, upsertUser } from '../database/utils';
 import { IDictionary, IUserProfile } from './types';
 
 const DATAKEY_PROFILE = "profile"
@@ -20,7 +20,8 @@ export async function fetchSkyFeedUsers(): Promise<number> {
   // create a connection with the database and fetch the users DB
   const db = await MongoDB.Connection();
   const userDB = await db.getCollection<IUser>(COLL_USERS);
-
+  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+  
   // ensure the seed user is in our database
   const inserted = upsertUser(userDB, SKYFEED_SEED_USER_PUBKEY)
   if (inserted) {
@@ -68,6 +69,11 @@ export async function fetchSkyFeedUsers(): Promise<number> {
     if (result.status === "fulfilled") {
       added += result.value;
     } else {
+      tryLogEvent(eventsDB, {
+        type: EventType.FETCHNEWCONTENT_ERROR,
+        error: result.reason,
+        createdAt: new Date(),
+      })
       console.log(`${new Date().toLocaleString()}: fetchUsers error: '`, result.reason)
     }
   }

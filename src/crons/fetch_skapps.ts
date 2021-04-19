@@ -1,9 +1,10 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js'
 import { CR_DATA_DOMAIN } from '../consts';
-import { COLL_USERS } from '../database';
+import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { IUser } from '../database/types';
+import { EventType, IEvent, IUser } from '../database/types';
+import { tryLogEvent } from '../database/utils';
 import { IDictionary } from './types';
 import { downloadFile } from './utils';
 
@@ -16,7 +17,8 @@ export async function fetchSkapps(): Promise<number> {
   // create a connection with the database and fetch all collections
   const db = await MongoDB.Connection();
   const usersDB = await db.getCollection<IUser>(COLL_USERS);
-
+  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+  
   // fetch a user cursor
   const userCursor = usersDB.find();
 
@@ -38,6 +40,11 @@ export async function fetchSkapps(): Promise<number> {
     if (result.status === "fulfilled") {
       added += result.value;
     } else {
+      tryLogEvent(eventsDB, {
+          type: EventType.FETCHSKAPPS_ERROR,
+          error: result.reason,
+          createdAt: new Date(),
+      })
       console.log(`${new Date().toLocaleString()}: fetchSkapps error: '`, result.reason)
     }
   }
