@@ -6,7 +6,7 @@ import { MongoDB } from '../database/mongodb';
 import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
 import { tryLogEvent } from '../database/utils';
 import { IIndex } from './types';
-import { downloadFile, downloadNewEntries } from './utils';
+import { downloadFile, downloadNewEntries, sleep } from './utils';
 
 // fetchNewContent is a simple scraping algorithm that scrapes all known users
 // for new content entries.
@@ -36,6 +36,11 @@ export async function fetchNewContent(): Promise<number> {
         user,
         skapp
       ))
+      // TODO: improve
+      // avoid being rate limited
+      if (promises.length && promises.length % 10 === 0) {
+        await sleep(1000)
+      }
     }
   }
 
@@ -45,7 +50,7 @@ export async function fetchNewContent(): Promise<number> {
   for (const result of results) {
     if (result.status === "fulfilled") {
       added += result.value;
-    } else {
+    } else if (result.reason) {
       tryLogEvent(eventsDB, {
         type: EventType.FETCHNEWCONTENT_ERROR,
         error: result.reason,
@@ -64,63 +69,70 @@ async function fetchEntries(
   user: IUser,
   skapp: string
 ): Promise<number> {
-  let entries: IContent[];
-  let operations: BulkWriteOperation<IContent>[] = [];
+  try {
+    let entries: IContent[];
+    let operations: BulkWriteOperation<IContent>[] = [];
 
-  // define some variables
-  const domain = CR_DATA_DOMAIN;
-  const path =`${domain}/${skapp}/newcontent/index.json`
-  const { userPK } = user
+    // define some variables
+    const domain = CR_DATA_DOMAIN;
+    const path =`${domain}/${skapp}/newcontent/index.json`
+    const { userPK } = user
 
-  // grab some info from the user object
-  const {
-    newContentCurrPage: currPage,
-    newContentCurrNumEntries: currOffset
-  } = user;
+    // grab some info from the user object
+    const {
+      newContentCurrPage: currPage,
+      newContentCurrNumEntries: currOffset
+    } = user;
 
-  // fetch the index
-  const index = await downloadFile<IIndex>(client, userPK, path)
+    // fetch the index
+    const index = await downloadFile<IIndex>(client, userPK, path)
+    if (!index) {
+      return 0; // TODO
+    }
 
-  // download pages up until curr page
-  for (let p = Number(currPage); p < index.currPageNumber; p++) {
+    // download pages up until curr page
+    for (let p = Number(currPage); p < index.currPageNumber; p++) {
+      entries = await downloadNewEntries(
+        EntryType.NEWCONTENT,
+        client,
+        userPK,
+        skapp,
+        `${domain}/${skapp}/newcontent/page_${p}.json`
+      )
+      for (const entry of entries) {
+        operations.push({ insertOne: { document: entry }})
+      }
+    }
+
+    // download entries up until curr offset
     entries = await downloadNewEntries(
       EntryType.NEWCONTENT,
       client,
       userPK,
       skapp,
-      `${domain}/${skapp}/newcontent/page_${p}.json`
+      `${domain}/${skapp}/newcontent/page_${index.currPageNumber}.json`,
+      Number(currOffset)
     )
     for (const entry of entries) {
       operations.push({ insertOne: { document: entry }})
     }
-  }
 
-  // download entries up until curr offset
-  entries = await downloadNewEntries(
-    EntryType.NEWCONTENT,
-    client,
-    userPK,
-    skapp,
-    `${domain}/${skapp}/newcontent/page_${index.currPageNumber}.json`,
-    Number(currOffset)
-  )
-  for (const entry of entries) {
-    operations.push({ insertOne: { document: entry }})
-  }
-
-  // insert entries
-  const numEntries = operations.length
-  if (numEntries) {
-    await entriesDB.bulkWrite(operations)
-  }
-
-  // update the user state
-  await userDB.updateOne({ _id: user._id }, {
-    $set: {
-      newContentCurrPage: index.currPageNumber,
-      newContentCurrNumEntries: index.currPageNumEntries,
+    // insert entries
+    const numEntries = operations.length
+    if (numEntries) {
+      await entriesDB.bulkWrite(operations)
     }
-  })
 
-  return numEntries
+    // update the user state
+    await userDB.updateOne({ _id: user._id }, {
+      $set: {
+        newContentCurrPage: index.currPageNumber,
+        newContentCurrNumEntries: index.currPageNumEntries,
+      }
+    })
+    return numEntries
+  } catch (error) {
+    console.log('uhoh', error)
+    throw error
+  }
 }

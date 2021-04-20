@@ -6,7 +6,7 @@ import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../database/types';
 import { tryLogEvent } from '../database/utils';
 import { IDictionary } from './types';
-import { downloadFile } from './utils';
+import { downloadFile, sleep } from './utils';
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
@@ -31,6 +31,11 @@ export async function fetchSkapps(): Promise<number> {
       usersDB,
       user,
     ))
+    // TODO: improve
+    // avoid being rate limited
+    if (promises.length && promises.length % 10 === 0) {
+      await sleep(1000)
+    }
   }
 
   // wait for all promises to be settled
@@ -39,7 +44,7 @@ export async function fetchSkapps(): Promise<number> {
   for (const result of results) {
     if (result.status === "fulfilled") {
       added += result.value;
-    } else {
+    } else if (result.reason) {
       tryLogEvent(eventsDB, {
           type: EventType.FETCHSKAPPS_ERROR,
           error: result.reason,
@@ -70,6 +75,10 @@ async function fetchNewSkapps(
   // download the dictionary
   let added = 0;
   const dict = await downloadFile<IDictionary<boolean>>(client, userPK, path)
+  if (!dict) {
+    return added; // TODO
+  }
+
   for (const skapp of Object.keys(dict)) {
     if (map[skapp]) {
       continue; // already exists
@@ -83,9 +92,13 @@ async function fetchNewSkapps(
     // might change in the future. For now though this is fine.
     try {
       const ncIndexPath = `${CR_DATA_DOMAIN}/${skapp}/newcontent/index.json`
-      await downloadFile(client, userPK, ncIndexPath)
-      added++;
-      user.skapps.push(skapp)
+      const file = await downloadFile(client, userPK, ncIndexPath)
+      if (file) {
+        added++;
+        user.skapps.push(skapp)
+      } else {
+        // TODO
+      }
     } catch (error) {
       console.log(`${new Date().toLocaleString()}: Could not add skapp, failed to download index'`, skapp, error)
     }

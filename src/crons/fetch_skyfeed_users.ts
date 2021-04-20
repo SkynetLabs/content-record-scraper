@@ -1,11 +1,12 @@
 import { Collection } from 'mongodb';
-import { SkynetClient } from 'skynet-js';
+import { SignedRegistryEntry, SkynetClient } from 'skynet-js';
 import { SKYFEED_SEED_USER_PUBKEY, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { IUser, IEvent, EventType } from '../database/types';
+import { EventType, IEvent, IUser } from '../database/types';
 import { tryLogEvent, upsertUser } from '../database/utils';
 import { IDictionary, IUserProfile } from './types';
+import { sleep } from './utils';
 
 const DATAKEY_PROFILE = "profile"
 const DATAKEY_FOLLOWING = "skyfeed-following"
@@ -21,7 +22,7 @@ export async function fetchSkyFeedUsers(): Promise<number> {
   const db = await MongoDB.Connection();
   const userDB = await db.getCollection<IUser>(COLL_USERS);
   const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
-  
+
   // ensure the seed user is in our database
   const inserted = upsertUser(userDB, SKYFEED_SEED_USER_PUBKEY)
   if (inserted) {
@@ -59,7 +60,14 @@ export async function fetchSkyFeedUsers(): Promise<number> {
       userDB,
       userMap,
       userPK
-    ))
+    ).catch(error => {
+      // do nothing
+    }))
+    // TODO: improve
+    // avoid being rate limited
+    if (promises.length && promises.length % 10 === 0) {
+      await sleep(1000)
+    }
   }
 
   // wait for all promises to be settled
@@ -68,13 +76,15 @@ export async function fetchSkyFeedUsers(): Promise<number> {
   for (const result of results) {
     if (result.status === "fulfilled") {
       added += result.value;
-    } else {
+    } else if (result.reason) {
+      console.log(`${new Date().toLocaleString()}: fetchUsers error: '`, result.reason)
       tryLogEvent(eventsDB, {
         type: EventType.FETCHNEWCONTENT_ERROR,
         error: result.reason,
         createdAt: new Date(),
       })
-      console.log(`${new Date().toLocaleString()}: fetchUsers error: '`, result.reason)
+    } else {
+      console.log(`${new Date().toLocaleString()}: fetchUsers error: '`, result)
     }
   }
   return added
@@ -86,17 +96,11 @@ async function fetchUsers(
   userMap: IDictionary<object>,
   userPK: string,
 ): Promise<number> {
-  // fetch user's profile
-  const response = await client.registry.getEntry(userPK, DATAKEY_PROFILE)
-  if (!response || !response.entry) {
-    throw new Error(`Could not find profile for user '${userPK}'`)
-  }
-
-  const content = await client.getFileContent<string>(response.entry.data)
-  const profileStr = content.data
-  const profile = JSON.parse(profileStr) as IUserProfile
-  if (!profile.dapps.skyfeed) {
-    throw new Error('Skyfeed not in profile')
+  // fetch user profile
+  const profile = await fetchUserProfile(client, userPK)
+  if (!profile) {
+    // TODO: handle this better
+    return 0;
   }
 
   // fetch users' followers and following
@@ -123,4 +127,38 @@ async function fetchUsers(
   }
 
   return total;
+}
+
+async function fetchUserProfile(
+  client: SkynetClient,
+  userPK: string,
+): Promise<IUserProfile|null> {
+  // fetch user's profile skylink
+  let response: SignedRegistryEntry;
+  try {
+    response = await client.registry.getEntry(userPK, DATAKEY_PROFILE)
+    if (!response || !response.entry) {
+      throw new Error(`Could not find profile for user '${userPK}'`)
+    }
+  } catch (error) {
+    // TODO: handle error
+    return null;
+  }
+
+  // fetch user's profile
+  let profile: IUserProfile;
+  try {
+    const content = await client.getFileContent<string>(response.entry.data)
+    const profileStr = content.data
+
+    profile = JSON.parse(profileStr) as IUserProfile
+    if (!profile.dapps.skyfeed) {
+      throw new Error('Skyfeed not in profile')
+    }
+  } catch (error) {
+    // TODO: handle error
+    return null;
+  }
+
+  return profile
 }

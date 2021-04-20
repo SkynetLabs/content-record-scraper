@@ -6,7 +6,7 @@ import { MongoDB } from '../database/mongodb';
 import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
 import { tryLogEvent } from '../database/utils';
 import { IIndex } from './types';
-import { downloadFile, downloadNewEntries } from './utils';
+import { downloadFile, downloadNewEntries, sleep } from './utils';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users
 // for content interaction entries.
@@ -36,6 +36,11 @@ export async function fetchInteractions(): Promise<number> {
         user,
         skapp
       ))
+      // TODO: improve
+      // avoid being rate limited
+      if (promises.length && promises.length % 10 === 0) {
+        await sleep(1000)
+      }
     }
   }
 
@@ -80,6 +85,9 @@ async function fetchEntries(
 
   // fetch the index
   const index = await downloadFile<IIndex>(client, userPK, path)
+  if (!index) {
+    return 0; // TODO
+  }
 
   // download pages up until curr page
   for (let p = Number(currPage); p < index.currPageNumber; p++) {
