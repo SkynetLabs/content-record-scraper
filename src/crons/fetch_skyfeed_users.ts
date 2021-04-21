@@ -24,7 +24,7 @@ export async function fetchSkyFeedUsers(throttle: Throttle<number>): Promise<num
   const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
 
   // ensure the seed user is in our database
-  const inserted = upsertUser(userDB, SKYFEED_SEED_USER_PUBKEY)
+  const inserted = await upsertUser(userDB, SKYFEED_SEED_USER_PUBKEY)
   if (inserted) {
     console.log(`${new Date().toLocaleString()}: Skyfeed seed user '${SKYFEED_SEED_USER_PUBKEY}' inserted.`)
   }
