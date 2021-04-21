@@ -1,15 +1,16 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CR_DATA_DOMAIN } from '../consts';
+import { CR_DATA_DOMAIN, REQUEST_THROTTLE_SLEEP_MS } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../database/types';
 import { IDictionary } from './types';
 import { downloadFile, settlePromises, sleep } from './utils';
+import { LeakyBucket } from 'ts-leaky-bucket';
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
-export async function fetchSkapps(): Promise<number> {
+export async function fetchSkapps(bucket: LeakyBucket): Promise<number> {
   // create a client
   const client = new SkynetClient("https://siasky.net");
   
@@ -27,6 +28,7 @@ export async function fetchSkapps(): Promise<number> {
     const user = await userCursor.next();
     const promise = fetchNewSkapps(
       client,
+      bucket,
       usersDB,
       user,
     )
@@ -41,7 +43,7 @@ export async function fetchSkapps(): Promise<number> {
     // TODO: improve
     // avoid being rate limited
     if (promises.length && promises.length % 10 === 0) {
-      await sleep(1000)
+      await sleep(REQUEST_THROTTLE_SLEEP_MS)
     }
   }
 
@@ -56,9 +58,12 @@ export async function fetchSkapps(): Promise<number> {
 
 async function fetchNewSkapps(
   client: SkynetClient,
+  bucket: LeakyBucket,
   userDB: Collection<IUser>,
   user: IUser,
 ): Promise<number> {
+  await bucket.maybeThrottle(1) // cost of 1, TODO: tweak?
+
   // define some variables
   const domain = CR_DATA_DOMAIN;
   const path =`${domain}/skapps.json`

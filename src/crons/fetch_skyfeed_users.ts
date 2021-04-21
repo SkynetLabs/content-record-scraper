@@ -1,12 +1,13 @@
 import { Collection } from 'mongodb';
 import { SignedRegistryEntry, SkynetClient } from 'skynet-js';
-import { SKYFEED_SEED_USER_PUBKEY, SKYNET_PORTAL_URL } from '../consts';
+import { SKYFEED_SEED_USER_PUBKEY, SKYNET_PORTAL_URL, REQUEST_THROTTLE_SLEEP_MS } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../database/types';
 import { upsertUser } from '../database/utils';
 import { IDictionary, IUserProfile } from './types';
 import { settlePromises, sleep } from './utils';
+import { LeakyBucket } from 'ts-leaky-bucket';
 
 const DATAKEY_PROFILE = "profile"
 const DATAKEY_FOLLOWING = "skyfeed-following"
@@ -14,7 +15,7 @@ const DATAKEY_FOLLOWERS = "skyfeed-followers"
 
 // fetchSkyFeedUsers is a simple scraping algorithm that scrapes all known users
 // from skyfeed.
-export async function fetchSkyFeedUsers(): Promise<number> {
+export async function fetchSkyFeedUsers(bucket: LeakyBucket): Promise<number> {
   // create a client
   const client = new SkynetClient(SKYNET_PORTAL_URL);
   
@@ -57,6 +58,7 @@ export async function fetchSkyFeedUsers(): Promise<number> {
   for (const userPK of users) {
     const promise = fetchUsers(
       client,
+      bucket,
       userDB,
       userMap,
       userPK
@@ -72,7 +74,7 @@ export async function fetchSkyFeedUsers(): Promise<number> {
     // TODO: improve
     // avoid being rate limited
     if (promises.length && promises.length % 10 === 0) {
-      await sleep(1000)
+      await sleep(REQUEST_THROTTLE_SLEEP_MS)
     }
   }
 
@@ -87,10 +89,13 @@ export async function fetchSkyFeedUsers(): Promise<number> {
 
 async function fetchUsers(
   client: SkynetClient,
+  bucket: LeakyBucket,
   userDB: Collection<IUser>,
   userMap: IDictionary<object>,
   userPK: string,
 ): Promise<number> {
+  await bucket.maybeThrottle(1) // cost of 1, TODO: tweak?
+
   // fetch user profile
   const profile = await fetchUserProfile(client, userPK)
 

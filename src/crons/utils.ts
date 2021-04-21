@@ -60,6 +60,10 @@ export async function settlePromises(
     if (result.status === "fulfilled") {
       added += result.value;
     } else if (result.reason) {
+      if (typeof result.reason === 'object' && !Object.keys(result.reason).length) {
+        continue // TODO: investigate?
+      }
+
       tryLogEvent(eventsDB, {
           type: eventsOnErrorType,
           error: result.reason,

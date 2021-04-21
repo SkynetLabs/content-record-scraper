@@ -1,15 +1,16 @@
 import { BulkWriteOperation, Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
+import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL, REQUEST_THROTTLE_SLEEP_MS } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
 import { IIndex } from './types';
 import { downloadFile, downloadNewEntries, settlePromises, sleep } from './utils';
+import { LeakyBucket } from 'ts-leaky-bucket';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users
 // for content interaction entries.
-export async function fetchInteractions(): Promise<number> {
+export async function fetchInteractions(bucket: LeakyBucket): Promise<number> {
   // create a client
   const client = new SkynetClient(SKYNET_PORTAL_URL);
   
@@ -30,6 +31,7 @@ export async function fetchInteractions(): Promise<number> {
     for (const skapp of user.skapps) {
       const promise = fetchEntries(
         client,
+        bucket,
         usersDB,
         entriesDB,
         user,
@@ -46,7 +48,7 @@ export async function fetchInteractions(): Promise<number> {
       // TODO: improve
       // avoid being rate limited
       if (promises.length && promises.length % 10 === 0) {
-        await sleep(1000)
+        await sleep(REQUEST_THROTTLE_SLEEP_MS)
       }
     }
   }
@@ -62,11 +64,14 @@ export async function fetchInteractions(): Promise<number> {
 
 async function fetchEntries(
   client: SkynetClient,
+  bucket: LeakyBucket,
   userDB: Collection<IUser>,
   entriesDB: Collection<IContent>,
   user: IUser,
   skapp: string
 ): Promise<number> {
+  await bucket.maybeThrottle(1) // cost of 1, TODO: tweak?
+
   let entries: IContent[];
   let operations: BulkWriteOperation<IContent>[] = [];
   
