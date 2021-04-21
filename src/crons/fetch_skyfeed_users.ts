@@ -4,9 +4,9 @@ import { SKYFEED_SEED_USER_PUBKEY, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../database/types';
-import { tryLogEvent, upsertUser } from '../database/utils';
+import { upsertUser } from '../database/utils';
 import { IDictionary, IUserProfile } from './types';
-import { sleep } from './utils';
+import { settlePromises, sleep } from './utils';
 
 const DATAKEY_PROFILE = "profile"
 const DATAKEY_FOLLOWING = "skyfeed-following"
@@ -55,14 +55,20 @@ export async function fetchSkyFeedUsers(): Promise<number> {
   // loop every user fetch his followers and following
   const promises = [];
   for (const userPK of users) {
-    promises.push(fetchUsers(
+    const promise = fetchUsers(
       client,
       userDB,
       userMap,
       userPK
-    ).catch(error => {
-      // do nothing
-    }))
+    )
+
+    // catch unhandled promise rejections but don't handle the error, we'll
+    // process the error when all promises were settled
+    //
+    // tslint:disable-next-line: no-empty
+    promise.catch(() => {})
+    promises.push(promise)
+
     // TODO: improve
     // avoid being rate limited
     if (promises.length && promises.length % 10 === 0) {
@@ -71,23 +77,12 @@ export async function fetchSkyFeedUsers(): Promise<number> {
   }
 
   // wait for all promises to be settled
-  const results = await Promise.allSettled<number[]>(promises)
-  let added = 0;
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      added += result.value;
-    } else if (result.reason) {
-      console.log(`${new Date().toLocaleString()}: fetchUsers error: '`, result.reason)
-      tryLogEvent(eventsDB, {
-        type: EventType.FETCHNEWCONTENT_ERROR,
-        error: result.reason,
-        createdAt: new Date(),
-      })
-    } else {
-      console.log(`${new Date().toLocaleString()}: fetchUsers error: '`, result)
-    }
-  }
-  return added
+  return await settlePromises(
+    eventsDB,
+    EventType.FETCHSKYFEEDUSERS_ERROR,
+    promises,
+    'fetchSkyFeedUsers' // context for console.log
+  )
 }
 
 async function fetchUsers(
@@ -98,10 +93,6 @@ async function fetchUsers(
 ): Promise<number> {
   // fetch user profile
   const profile = await fetchUserProfile(client, userPK)
-  if (!profile) {
-    // TODO: handle this better
-    return 0;
-  }
 
   // fetch users' followers and following
   const publicKey = profile.dapps.skyfeed.publicKey;
@@ -132,32 +123,18 @@ async function fetchUsers(
 async function fetchUserProfile(
   client: SkynetClient,
   userPK: string,
-): Promise<IUserProfile|null> {
+): Promise<IUserProfile> {
   // fetch user's profile skylink
-  let response: SignedRegistryEntry;
-  try {
-    response = await client.registry.getEntry(userPK, DATAKEY_PROFILE)
-    if (!response || !response.entry) {
-      throw new Error(`Could not find profile for user '${userPK}'`)
-    }
-  } catch (error) {
-    // TODO: handle error
-    return null;
+  const response: SignedRegistryEntry = await client.registry.getEntry(userPK, DATAKEY_PROFILE)
+  if (!response || !response.entry) {
+    throw new Error(`Could not find profile for user '${userPK}'`)
   }
 
   // fetch user's profile
-  let profile: IUserProfile;
-  try {
-    const content = await client.getFileContent<string>(response.entry.data)
-    const profileStr = content.data
-
-    profile = JSON.parse(profileStr) as IUserProfile
-    if (!profile.dapps.skyfeed) {
-      throw new Error('Skyfeed not in profile')
-    }
-  } catch (error) {
-    // TODO: handle error
-    return null;
+  const content = await client.getFileContent<string>(response.entry.data)
+  const profile: IUserProfile = JSON.parse(content.data)
+  if (!profile.dapps.skyfeed) {
+    throw new Error(`Skyfeed not in profile for user '${userPK}'`)
   }
 
   return profile

@@ -1,12 +1,11 @@
 import { Collection } from 'mongodb';
-import { SkynetClient } from 'skynet-js'
+import { SkynetClient } from 'skynet-js';
 import { CR_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../database/types';
-import { tryLogEvent } from '../database/utils';
 import { IDictionary } from './types';
-import { downloadFile, sleep } from './utils';
+import { downloadFile, settlePromises, sleep } from './utils';
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
@@ -26,11 +25,19 @@ export async function fetchSkapps(): Promise<number> {
   const promises = [];
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
-    promises.push(fetchNewSkapps(
+    const promise = fetchNewSkapps(
       client,
       usersDB,
       user,
-    ))
+    )
+
+    // catch unhandled promise rejections but don't handle the error, we'll
+    // process the error when all promises were settled
+    //
+    // tslint:disable-next-line: no-empty
+    promise.catch(() => {})
+    promises.push(promise)
+
     // TODO: improve
     // avoid being rate limited
     if (promises.length && promises.length % 10 === 0) {
@@ -39,21 +46,12 @@ export async function fetchSkapps(): Promise<number> {
   }
 
   // wait for all promises to be settled
-  const results = await Promise.allSettled<number[]>(promises)
-  let added = 0;
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      added += result.value;
-    } else if (result.reason) {
-      tryLogEvent(eventsDB, {
-          type: EventType.FETCHSKAPPS_ERROR,
-          error: result.reason,
-          createdAt: new Date(),
-      })
-      console.log(`${new Date().toLocaleString()}: fetchSkapps error: '`, result.reason)
-    }
-  }
-  return added
+  return await settlePromises(
+    eventsDB,
+    EventType.FETCHSKAPPS_ERROR,
+    promises,
+    'fetchSkapps'
+  );
 }
 
 async function fetchNewSkapps(
@@ -76,7 +74,7 @@ async function fetchNewSkapps(
   let added = 0;
   const dict = await downloadFile<IDictionary<boolean>>(client, userPK, path)
   if (!dict) {
-    return added; // TODO
+    throw new Error(`No skapps file found for user ${userPK}`)
   }
 
   for (const skapp of Object.keys(dict)) {
@@ -92,14 +90,14 @@ async function fetchNewSkapps(
     // might change in the future. For now though this is fine.
     try {
       const ncIndexPath = `${CR_DATA_DOMAIN}/${skapp}/newcontent/index.json`
-      const file = await downloadFile(client, userPK, ncIndexPath)
-      if (file) {
-        added++;
-        user.skapps.push(skapp)
-      } else {
-        // TODO
+      const ncIndex = await downloadFile(client, userPK, ncIndexPath)
+      if (!ncIndex) {
+        throw new Error(`No NC index file found for user ${userPK}`)
       }
+      added++;
+      user.skapps.push(skapp)
     } catch (error) {
+      // we don't bubble up index files not being found
       console.log(`${new Date().toLocaleString()}: Could not add skapp, failed to download index'`, skapp, error)
     }
   }

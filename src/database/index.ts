@@ -29,7 +29,6 @@ export async function init(): Promise<MongoDB> {
   const users = await mongo.getCollection<IUser>(COLL_USERS)
   await mongo.ensureIndex(COLL_USERS, 'userPK', { unique: true })
   
-
   console.log(`${new Date().toLocaleString()}: DB initialized.`)
 
   // add test user

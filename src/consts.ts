@@ -24,4 +24,4 @@ export const SKYNET_PORTAL_URL = 'https://siasky.net'
 
 export const DEBUG_ENABLED = process.env.DEBUG_ENABLED === 'true';
 
-export const EVENT_EXPIRY_IN_S = 60 * 60 * 24 * 7 * 2; // last 2 weeks
+export const EVENT_EXPIRY_IN_S = 60 * 60 * 24 * 7; // last 7 days

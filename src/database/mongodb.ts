@@ -3,7 +3,7 @@ import {
   Db,
   IndexOptions,
   MongoClient,
-  MongoClientOptions,
+  MongoClientOptions
 } from 'mongodb';
 import { MONGO_CONNECTION_STRING, MONGO_DB_NAME } from '../consts';
 
@@ -59,8 +59,23 @@ export class MongoDB {
     fieldOrSpec: string | unknown,
     options?: IndexOptions
   ): Promise<string> {
-    const collection = await this.ensureCollection(collectionName);
-    const ensured = await collection.createIndex(fieldOrSpec, options);
+    let collection: Collection;
+    let ensured: string;
+
+    try {
+      collection = await this.ensureCollection(collectionName);
+      ensured = await collection.createIndex(fieldOrSpec, options);
+    } catch (error) {
+      // try and drop before creating it should options clash
+      const indexRegexp = /with name: (?<name>.*) already exists/;
+      const matchResult = String(error).match(indexRegexp)
+      const indexName = matchResult.groups.name
+      if (indexName) {
+        await collection.dropIndex(indexName)
+        ensured = await collection.createIndex(fieldOrSpec, options);
+      }
+    }
+
     return ensured;
   }
 

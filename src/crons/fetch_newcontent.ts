@@ -4,9 +4,8 @@ import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
-import { tryLogEvent } from '../database/utils';
 import { IIndex } from './types';
-import { downloadFile, downloadNewEntries, sleep } from './utils';
+import { downloadFile, downloadNewEntries, settlePromises, sleep } from './utils';
 
 // fetchNewContent is a simple scraping algorithm that scrapes all known users
 // for new content entries.
@@ -29,13 +28,21 @@ export async function fetchNewContent(): Promise<number> {
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
     for (const skapp of user.skapps) {
-      promises.push(fetchEntries(
+      const promise = fetchEntries(
         client,
         usersDB,
         entriesDB,
         user,
         skapp
-      ))
+      )
+
+      // catch unhandled promise rejections but don't handle the error, we'll
+      // process the error when all promises were settled
+      //
+      // tslint:disable-next-line: no-empty
+      promise.catch(() => {})
+      promises.push(promise)
+
       // TODO: improve
       // avoid being rate limited
       if (promises.length && promises.length % 10 === 0) {
@@ -45,21 +52,12 @@ export async function fetchNewContent(): Promise<number> {
   }
 
   // wait for all promises to be settled
-  const results = await Promise.allSettled<number[]>(promises)
-  let added = 0;
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      added += result.value;
-    } else if (result.reason) {
-      tryLogEvent(eventsDB, {
-        type: EventType.FETCHNEWCONTENT_ERROR,
-        error: result.reason,
-        createdAt: new Date(),
-      })
-      console.log(`${new Date().toLocaleString()}: fetchNewContent error: '`, result.reason)
-    }
-  }
-  return added
+  return await settlePromises(
+    eventsDB,
+    EventType.FETCHNEWCONTENT_ERROR,
+    promises,
+    'fetchNewContent' // context for console.log
+  )
 }
 
 async function fetchEntries(
@@ -69,70 +67,65 @@ async function fetchEntries(
   user: IUser,
   skapp: string
 ): Promise<number> {
-  try {
-    let entries: IContent[];
-    let operations: BulkWriteOperation<IContent>[] = [];
+  let entries: IContent[];
+  let operations: BulkWriteOperation<IContent>[] = [];
 
-    // define some variables
-    const domain = CR_DATA_DOMAIN;
-    const path =`${domain}/${skapp}/newcontent/index.json`
-    const { userPK } = user
+  // define some variables
+  const domain = CR_DATA_DOMAIN;
+  const path =`${domain}/${skapp}/newcontent/index.json`
+  const { userPK } = user
 
-    // grab some info from the user object
-    const {
-      newContentCurrPage: currPage,
-      newContentCurrNumEntries: currOffset
-    } = user;
+  // grab some info from the user object
+  const {
+    newContentCurrPage: currPage,
+    newContentCurrNumEntries: currOffset
+  } = user;
 
-    // fetch the index
-    const index = await downloadFile<IIndex>(client, userPK, path)
-    if (!index) {
-      return 0; // TODO
-    }
+  // fetch the index
+  const index = await downloadFile<IIndex>(client, userPK, path)
+  if (!index) {
+    throw new Error(`No new content index file found for user ${userPK}`)
+  }
 
-    // download pages up until curr page
-    for (let p = Number(currPage); p < index.currPageNumber; p++) {
-      entries = await downloadNewEntries(
-        EntryType.NEWCONTENT,
-        client,
-        userPK,
-        skapp,
-        `${domain}/${skapp}/newcontent/page_${p}.json`
-      )
-      for (const entry of entries) {
-        operations.push({ insertOne: { document: entry }})
-      }
-    }
-
-    // download entries up until curr offset
+  // download pages up until curr page
+  for (let p = Number(currPage); p < index.currPageNumber; p++) {
     entries = await downloadNewEntries(
       EntryType.NEWCONTENT,
       client,
       userPK,
       skapp,
-      `${domain}/${skapp}/newcontent/page_${index.currPageNumber}.json`,
-      Number(currOffset)
+      `${domain}/${skapp}/newcontent/page_${p}.json`
     )
     for (const entry of entries) {
       operations.push({ insertOne: { document: entry }})
     }
-
-    // insert entries
-    const numEntries = operations.length
-    if (numEntries) {
-      await entriesDB.bulkWrite(operations)
-    }
-
-    // update the user state
-    await userDB.updateOne({ _id: user._id }, {
-      $set: {
-        newContentCurrPage: index.currPageNumber,
-        newContentCurrNumEntries: index.currPageNumEntries,
-      }
-    })
-    return numEntries
-  } catch (error) {
-    console.log('uhoh', error)
-    throw error
   }
+
+  // download entries up until curr offset
+  entries = await downloadNewEntries(
+    EntryType.NEWCONTENT,
+    client,
+    userPK,
+    skapp,
+    `${domain}/${skapp}/newcontent/page_${index.currPageNumber}.json`,
+    Number(currOffset)
+  )
+  for (const entry of entries) {
+    operations.push({ insertOne: { document: entry }})
+  }
+
+  // insert entries
+  const numEntries = operations.length
+  if (numEntries) {
+    await entriesDB.bulkWrite(operations)
+  }
+
+  // update the user state
+  await userDB.updateOne({ _id: user._id }, {
+    $set: {
+      newContentCurrPage: index.currPageNumber,
+      newContentCurrNumEntries: index.currPageNumEntries,
+    }
+  })
+  return numEntries
 }

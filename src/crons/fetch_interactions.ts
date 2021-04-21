@@ -4,9 +4,8 @@ import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
-import { tryLogEvent } from '../database/utils';
 import { IIndex } from './types';
-import { downloadFile, downloadNewEntries, sleep } from './utils';
+import { downloadFile, downloadNewEntries, settlePromises, sleep } from './utils';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users
 // for content interaction entries.
@@ -29,13 +28,21 @@ export async function fetchInteractions(): Promise<number> {
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
     for (const skapp of user.skapps) {
-      promises.push(fetchEntries(
+      const promise = fetchEntries(
         client,
         usersDB,
         entriesDB,
         user,
         skapp
-      ))
+      )
+
+      // catch unhandled promise rejections but don't handle the error, we'll
+      // process the error when all promises were settled
+      //
+      // tslint:disable-next-line: no-empty
+      promise.catch(() => {})
+      promises.push(promise)      
+
       // TODO: improve
       // avoid being rate limited
       if (promises.length && promises.length % 10 === 0) {
@@ -45,21 +52,12 @@ export async function fetchInteractions(): Promise<number> {
   }
 
   // wait for all promises to be settled
-  const results = await Promise.allSettled<number[]>(promises)
-  let added = 0;
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      added += result.value;
-    } else {
-      tryLogEvent(eventsDB,{
-        type: EventType.FETCHINTERACTIONS_ERROR,
-        error: result.reason,
-        createdAt: new Date(),
-      })
-      console.log(`${new Date().toLocaleString()}: fetchInteractions error: '`, result.reason)
-    }
-  }
-  return added
+  return await settlePromises(
+    eventsDB,
+    EventType.FETCHINTERACTIONS_ERROR,
+    promises,
+    'fetchInteractions' // context for console.log
+  )
 }
 
 async function fetchEntries(
@@ -86,7 +84,7 @@ async function fetchEntries(
   // fetch the index
   const index = await downloadFile<IIndex>(client, userPK, path)
   if (!index) {
-    return 0; // TODO
+    throw new Error(`No interactions index file found for user ${userPK}`)
   }
 
   // download pages up until curr page
@@ -130,5 +128,5 @@ async function fetchEntries(
     }
   })
 
-  return operations.length;
+  return numEntries;
 }

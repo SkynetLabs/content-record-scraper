@@ -13,12 +13,12 @@ import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
 
 type CronHandler = () => Promise<void|number>
 
-const CRON_TIME = '0 */15 * * * *' // every 15'
-const CRON_TIME_DEV = '0 * * * * *' // every minute".
+const CRON_TIME_EVERY_15 = '0 */15 * * * *' // every 15'
+const CRON_TIME_EVERY_60 = '0 * * * * *' // every hour
+const CRON_TIME_DEV = '0 * * * * *' // every minute.
 
 export async function init(): Promise<void> {
-  const cronTime = DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME;
-  console.log(`${new Date().toLocaleString()}: Starting cronjobs on schedule '${cronTime}'...`);
+  console.log(`${new Date().toLocaleString()}: Starting cronjobs on ${DEBUG_ENABLED? 'debug': 'production'} schedule`);
 
   // create a connection with the database and fetch the users DB
   const db = await MongoDB.Connection();
@@ -26,7 +26,7 @@ export async function init(): Promise<void> {
   
   const fetchSkyFeedUsersMutex = new Mutex();
   startCronJob(
-    cronTime,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
     () => {
       tryRun(
         'fetchSkyFeedUsers',
@@ -39,7 +39,7 @@ export async function init(): Promise<void> {
 
   const fetchSkappsMutex = new Mutex();
   startCronJob(
-    cronTime,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
     () => {
       tryRun(
         'fetchSkapps',
@@ -52,7 +52,7 @@ export async function init(): Promise<void> {
 
   const fetchNewContentMutex = new Mutex();
   startCronJob(
-    cronTime,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
       tryRun(
         'fetchNewContent',
@@ -65,7 +65,7 @@ export async function init(): Promise<void> {
 
   const fetchInteractionsMutex = new Mutex();
   startCronJob(
-    cronTime,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
       tryRun(
         'fetchInteractions',
