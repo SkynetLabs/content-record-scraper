@@ -33,7 +33,7 @@ export async function init(): Promise<MongoDB> {
 
   // add test user
   try {
-    const inserted = upsertUser(users, TEST_USER_PUBKEY)
+    const inserted = await upsertUser(users, TEST_USER_PUBKEY)
     if (inserted) {
       console.log(`${new Date().toLocaleString()}: Test user '${TEST_USER_PUBKEY}' inserted.`)
     }
