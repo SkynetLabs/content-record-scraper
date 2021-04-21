@@ -40,3 +40,7 @@ export interface IRawEntry {
   metadata: object;   // should be valid JSON
   timestamp: number;  // unix timestamp of recording
 }
+
+export type Throttle<T> = (fn: Function) => () => Promise<T>
+
+export type CronHandler<T> = (throttle: Throttle<T>) => Promise<T>

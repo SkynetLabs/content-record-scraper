@@ -2,7 +2,7 @@
   "name": "content-record-scraper",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.ts",
   "engines": {
     "node": "14"
   },
@@ -23,11 +23,12 @@
     "cron": "^1.8.2",
     "dotenv": "^8.2.0",
     "mongodb": "^3.6.6",
+    "p-throttle": "^4.1.1",
     "skynet-js": "^4.0.1-beta"
   },
   "devDependencies": {
+    "@types/p-throttle": "^2.1.0",
     "rimraf": "^3.0.2",
-    "ts-leaky-bucket": "^1.1.1",
     "ts-node": "^8.10.2",
     "tslint": "^5.20.1",
     "tsnodemon": "^1.2.2",

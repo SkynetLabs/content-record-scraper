@@ -1,16 +1,15 @@
 import { BulkWriteOperation, Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL, REQUEST_THROTTLE_SLEEP_MS } from '../consts';
+import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
-import { IIndex } from './types';
-import { downloadFile, downloadNewEntries, settlePromises, sleep } from './utils';
-import { LeakyBucket } from 'ts-leaky-bucket';
+import { IIndex, Throttle } from './types';
+import { downloadFile, downloadNewEntries, settlePromises } from './utils';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users
 // for content interaction entries.
-export async function fetchInteractions(bucket: LeakyBucket): Promise<number> {
+export async function fetchInteractions(throttle: Throttle<number>): Promise<number> {
   // create a client
   const client = new SkynetClient(SKYNET_PORTAL_URL);
   
@@ -29,27 +28,21 @@ export async function fetchInteractions(bucket: LeakyBucket): Promise<number> {
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
     for (const skapp of user.skapps) {
-      const promise = fetchEntries(
+      const promise = throttle(fetchEntries.bind(
+        null,
         client,
-        bucket,
         usersDB,
         entriesDB,
         user,
         skapp
-      )
+      ))()
 
       // catch unhandled promise rejections but don't handle the error, we'll
       // process the error when all promises were settled
       //
       // tslint:disable-next-line: no-empty
       promise.catch(() => {})
-      promises.push(promise)      
-
-      // TODO: improve
-      // avoid being rate limited
-      if (promises.length && promises.length % 10 === 0) {
-        await sleep(REQUEST_THROTTLE_SLEEP_MS)
-      }
+      promises.push(promise)
     }
   }
 
@@ -64,14 +57,11 @@ export async function fetchInteractions(bucket: LeakyBucket): Promise<number> {
 
 async function fetchEntries(
   client: SkynetClient,
-  bucket: LeakyBucket,
   userDB: Collection<IUser>,
   entriesDB: Collection<IContent>,
   user: IUser,
   skapp: string
 ): Promise<number> {
-  await bucket.maybeThrottle(1) // cost of 1, TODO: tweak?
-
   let entries: IContent[];
   let operations: BulkWriteOperation<IContent>[] = [];
   

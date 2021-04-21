@@ -1,16 +1,15 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CR_DATA_DOMAIN, REQUEST_THROTTLE_SLEEP_MS } from '../consts';
+import { CR_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../database/types';
-import { IDictionary } from './types';
-import { downloadFile, settlePromises, sleep } from './utils';
-import { LeakyBucket } from 'ts-leaky-bucket';
+import { IDictionary, Throttle } from './types';
+import { downloadFile, settlePromises } from './utils';
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
-export async function fetchSkapps(bucket: LeakyBucket): Promise<number> {
+export async function fetchSkapps(throttle: Throttle<number>): Promise<number> {
   // create a client
   const client = new SkynetClient("https://siasky.net");
   
@@ -26,12 +25,12 @@ export async function fetchSkapps(bucket: LeakyBucket): Promise<number> {
   const promises = [];
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
-    const promise = fetchNewSkapps(
+    const promise = throttle(fetchNewSkapps.bind(
+      null,
       client,
-      bucket,
       usersDB,
       user,
-    )
+    ))()
 
     // catch unhandled promise rejections but don't handle the error, we'll
     // process the error when all promises were settled
@@ -39,12 +38,6 @@ export async function fetchSkapps(bucket: LeakyBucket): Promise<number> {
     // tslint:disable-next-line: no-empty
     promise.catch(() => {})
     promises.push(promise)
-
-    // TODO: improve
-    // avoid being rate limited
-    if (promises.length && promises.length % 10 === 0) {
-      await sleep(REQUEST_THROTTLE_SLEEP_MS)
-    }
   }
 
   // wait for all promises to be settled
@@ -58,12 +51,9 @@ export async function fetchSkapps(bucket: LeakyBucket): Promise<number> {
 
 async function fetchNewSkapps(
   client: SkynetClient,
-  bucket: LeakyBucket,
   userDB: Collection<IUser>,
   user: IUser,
 ): Promise<number> {
-  await bucket.maybeThrottle(1) // cost of 1, TODO: tweak?
-
   // define some variables
   const domain = CR_DATA_DOMAIN;
   const path =`${domain}/skapps.json`

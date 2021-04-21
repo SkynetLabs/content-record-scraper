@@ -10,9 +10,10 @@ import { fetchInteractions } from './fetch_interactions';
 import { fetchNewContent } from './fetch_newcontent';
 import { fetchSkapps } from './fetch_skapps';
 import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
-import { LeakyBucket } from 'ts-leaky-bucket';
+import { CronHandler, Throttle } from './types';
 
-type CronHandler = (bucket: LeakyBucket) => Promise<void|number>
+// tslint:disable-next-line: no-require-imports no-var-requires
+const pThrottle = require('p-throttle');
 
 const CRON_TIME_EVERY_15 = '0 */15 * * * *' // every 15'
 const CRON_TIME_EVERY_60 = '0 * * * * *' // every hour
@@ -26,10 +27,10 @@ export async function init(): Promise<void> {
   const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
   
   // create a leaky bucket to limit the amount of requests we send the client
-  const bucket = new LeakyBucket({
-    capacity: 600,
-    intervalMillis: 60_000,
-  });
+  const throttle = pThrottle({
+    limit: 1,
+    interval: 1_000
+  }); // limit to 1r/s to be on the safe side
 
   const fetchSkyFeedUsersMutex = new Mutex();
   startCronJob(
@@ -40,7 +41,7 @@ export async function init(): Promise<void> {
         fetchSkyFeedUsersMutex,
         fetchSkyFeedUsers,
         eventsDB,
-        bucket,
+        throttle,
       )
     }
   );
@@ -54,7 +55,7 @@ export async function init(): Promise<void> {
         fetchSkappsMutex,
         fetchSkapps,
         eventsDB,
-        bucket,
+        throttle,
       )
     }
   );
@@ -68,7 +69,7 @@ export async function init(): Promise<void> {
         fetchNewContentMutex,
         fetchNewContent,
         eventsDB,
-        bucket,
+        throttle,
       )
     }
   );
@@ -82,7 +83,7 @@ export async function init(): Promise<void> {
         fetchInteractionsMutex,
         fetchInteractions,
         eventsDB,
-        bucket
+        throttle
       )
     }
   );
@@ -91,9 +92,9 @@ export async function init(): Promise<void> {
 async function tryRun(
   name: string,
   mutex: Mutex,
-  handler: CronHandler,
+  handler: CronHandler<number>,
   eventsDB: Collection<IEvent>,
-  bucket: LeakyBucket,
+  throttle: Throttle<number>,
 ): Promise<void> {
   // skip if mutex is locked
   if (mutex.isLocked()) {
@@ -109,7 +110,7 @@ async function tryRun(
     console.log(`${start.toLocaleString()}: ${name} started`)
 
     // execute
-    const added = await handler(bucket)
+    const added = await handler(throttle)
     const end = new Date()
     if (added) {
       console.log(`${end.toLocaleString()}: ${name} ${added} added`)
