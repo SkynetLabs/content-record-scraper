@@ -20,8 +20,14 @@ export async function upsertUser(userDB: Collection, userPK: string): Promise<bo
   return upsertedCount === 1
 }
 
-export async function tryLogEvent(eventsDB: Collection, event: IEvent): Promise<void> {
+export async function tryLogEvent(eventsDB: Collection, event: Partial<IEvent>): Promise<void> {
   try {
+    if (!event.type) {
+      console.log(`${new Date().toLocaleString()}: developer error, event type not set`)
+      process.exit(1);
+    }
+
+    event.createdAt = event.createdAt || new Date()
     await eventsDB.insertOne(event)
   } catch (error) {
     // ignore

@@ -65,6 +65,7 @@ export async function settlePromises(
       }
 
       tryLogEvent(eventsDB, {
+          context,
           type: eventsOnErrorType,
           error: result.reason,
           createdAt: new Date(),

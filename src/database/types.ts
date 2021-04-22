@@ -49,6 +49,7 @@ export interface IUser {
 export interface IEvent {
   _id?: ObjectId;
   type: EventType;
+  context?: string;
   description?: string;
   metadata?: object;
   error?: string;

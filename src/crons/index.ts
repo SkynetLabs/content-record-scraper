@@ -90,7 +90,7 @@ export async function init(): Promise<void> {
 }
 
 async function tryRun(
-  name: string,
+  context: string,
   mutex: Mutex,
   handler: CronHandler<number>,
   eventsDB: Collection<IEvent>,
@@ -107,33 +107,35 @@ async function tryRun(
 
   try {
     // log start
-    console.log(`${start.toLocaleString()}: ${name} started`)
+    console.log(`${start.toLocaleString()}: ${context} started`)
 
     // execute
     const added = await handler(throttle)
     const end = new Date()
     if (added) {
-      console.log(`${end.toLocaleString()}: ${name} ${added} added`)
+      console.log(`${end.toLocaleString()}: ${context} ${added} added`)
     }
     
     // log end and duration
     const elapsed = end.getTime() - start.getTime();
-    console.log(`${end.toLocaleString()}: ${name} ended, took ${elapsed}ms.`)
+    console.log(`${end.toLocaleString()}: ${context} ended, took ${elapsed}ms.`)
 
     // insert event
     tryLogEvent(eventsDB, {
+      context,
       type: EventType.ITERATION_SUCCESS,
-      metadata: { cron: name, duration: elapsed, success: true, added } ,
+      metadata: { duration: elapsed, added } ,
       createdAt: new Date(),
     })
   } catch (error) {
-    console.log(`${start.toLocaleString()}: ${name} failed, error:`, error)
+    console.log(`${start.toLocaleString()}: ${context} failed, error:`, error)
 
     // insert event
     tryLogEvent(eventsDB, {
+      context,
       type: EventType.ITERATION_FAILURE,
       error: error.message,
-      metadata: { cron: name, error } ,
+      metadata: { error } ,
       createdAt: new Date(),
     })
   } finally {
