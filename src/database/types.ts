@@ -39,9 +39,11 @@ export interface IUser {
 
   newContentCurrPage: NumberInt;
   newContentCurrNumEntries: NumberInt;
+  newContentConsecNoneFound: NumberInt;
 
   contentInteractionsCurrPage: NumberInt;
   contentInteractionsNumEntries: NumberInt;
+  contentInteractionsConsecNoneFound: NumberInt;
 
   createdAt: Date;
 }

@@ -5,6 +5,15 @@ import { EntryType, EventType, IContent, IEvent } from '../database/types';
 import { tryLogEvent } from '../database/utils';
 import { IPage, IRawEntry } from './types';
 
+// The following constants define a cooldown mechanism of sorts. Crons will skip
+// an iteration if previous runs yielded 0 new entries. Every time we find 0 new
+// entries we increment this number, which increases the chance we skip on the
+// next iteration. This number is reset to 0 when we find new entries. This
+// function is capped at 5%, so for very inactive users we would still run an
+// iteration every day (at current crontimes).
+const SHOULD_RUN_FACTOR = 1.05;
+const SHOULD_RUN_MIN_PCT = 0.05;
+
 export async function downloadNewEntries(
   type: EntryType,
   client: SkynetClient,
@@ -78,8 +87,15 @@ export async function settlePromises(
 
   return added
 }
-// sleep is a small helper function that sleeps for the given amount of time in
-// milliseconds.
+
+export function shouldRun(noResultsCnt: number): boolean {
+  let pctChance = 1 / (SHOULD_RUN_FACTOR ** noResultsCnt)
+  if (pctChance < SHOULD_RUN_MIN_PCT) {
+    pctChance = SHOULD_RUN_MIN_PCT
+  }
+  return Math.random() <= pctChance
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }

@@ -16,7 +16,7 @@ import { CronHandler, Throttle } from './types';
 const pThrottle = require('p-throttle');
 
 const CRON_TIME_EVERY_15 = '0 */15 * * * *' // every 15'
-const CRON_TIME_EVERY_60 = '0 * * * * *' // every hour
+const CRON_TIME_EVERY_60 = '0 0 * * * *' // every hour
 const CRON_TIME_DEV = '0 * * * * *' // every minute.
 
 export async function init(): Promise<void> {

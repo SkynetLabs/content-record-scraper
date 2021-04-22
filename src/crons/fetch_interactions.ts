@@ -1,11 +1,11 @@
-import { BulkWriteOperation, Collection } from 'mongodb';
+import { BulkWriteOperation, Collection, Int32 as NumberInt } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
 import { IIndex, Throttle } from './types';
-import { downloadFile, downloadNewEntries, settlePromises } from './utils';
+import { downloadFile, downloadNewEntries, settlePromises, shouldRun } from './utils';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users
 // for content interaction entries.
@@ -27,6 +27,14 @@ export async function fetchInteractions(throttle: Throttle<number>): Promise<num
   const promises = [];
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
+    const { contentInteractionsConsecNoneFound } = user;
+
+    // skip this user a certain pct of the times if he has been inactive
+    const consecNoneFound = Number(contentInteractionsConsecNoneFound || 0);
+    if (!shouldRun(consecNoneFound)) {
+      continue;
+    }
+
     for (const skapp of user.skapps) {
       const promise = throttle(fetchEntries.bind(
         null,
@@ -68,7 +76,7 @@ async function fetchEntries(
   // define some variables
   const domain = CR_DATA_DOMAIN;
   const path =`${domain}/${skapp}/interactions/index.json`
-  const { userPK } = user
+  const { userPK, contentInteractionsConsecNoneFound } = user
 
   // grab some info from the user object
   const {
@@ -109,10 +117,16 @@ async function fetchEntries(
     operations.push({ insertOne: { document: entry }})
   }
 
+  // possibly increment consecutive none found
+  let consecNoneFound = Number(contentInteractionsConsecNoneFound || 0);
+
   // insert entries
   const numEntries = operations.length
   if (numEntries) {
+    consecNoneFound = 0
     await entriesDB.bulkWrite(operations)
+  } else {
+    consecNoneFound++
   }
 
   // update the user state
@@ -120,6 +134,7 @@ async function fetchEntries(
     $set: {
       contentInteractionsCurrPage: index.currPageNumber,
       contentInteractionsNumEntries: index.currPageNumEntries,
+      contentInteractionsConsecutiveNoneFound: new NumberInt(consecNoneFound),
     }
   })
 
