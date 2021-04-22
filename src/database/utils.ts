@@ -9,9 +9,12 @@ export async function upsertUser(userDB: Collection, userPK: string): Promise<bo
         userPK,
         skapps: [] as string[],
         newContentCurrPage : new NumberInt(0),
-        newContentCurrNumEntries : new NumberInt(0),
+        newContentCurrNumEntries: new NumberInt(0),
+        newContentConsecNoneFound: new NumberInt(0),
+
         contentInteractionsCurrPage : new NumberInt(0),
         contentInteractionsNumEntries: new NumberInt(0),
+        contentInteractionsNoneFound: new NumberInt(0),
         createdAt: new Date(),
       }
     },

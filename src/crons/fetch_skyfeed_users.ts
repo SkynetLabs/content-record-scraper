@@ -89,6 +89,11 @@ async function fetchUsers(
   // fetch user profile
   const profile = await fetchUserProfile(client, userPK)
 
+  // sanity check skyfeed is listed in the user's dapps
+  if (!profile.dapps.skyfeed) {
+    throw new Error(`Skyfeed not in profile for user '${userPK}'`)
+  }
+
   // fetch users' followers and following
   const publicKey = profile.dapps.skyfeed.publicKey;
   const following = await client.db.getJSON(publicKey, DATAKEY_FOLLOWING)
@@ -125,12 +130,22 @@ async function fetchUserProfile(
     throw new Error(`Could not find profile for user '${userPK}'`)
   }
 
-  // fetch user's profile
-  const content = await client.getFileContent<string>(response.entry.data)
-  const profile: IUserProfile = JSON.parse(content.data)
-  if (!profile.dapps.skyfeed) {
-    throw new Error(`Skyfeed not in profile for user '${userPK}'`)
+  // fetch user's profile data
+  let profileDataStr: string
+  try {
+    const content = await client.getFileContent<string>(response.entry.data)
+    profileDataStr = content.data
+  } catch (error) {
+    throw new Error(`Profile was not found for user '${userPK}', err ${error.message}`)
   }
 
-  return profile
+  // try to parse it as JSON
+  let profile: IUserProfile
+  try {
+    profile = JSON.parse(profileDataStr)
+  } catch (error) {
+    throw new Error(`Profile was not valid JSON for user '${userPK}'`)
+  }
+
+  return profile;
 }
