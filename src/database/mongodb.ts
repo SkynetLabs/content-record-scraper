@@ -69,7 +69,7 @@ export class MongoDB {
       // try and drop before creating it should options clash
       const indexRegexp = /with name: (?<name>.*) already exists/;
       const matchResult = String(error).match(indexRegexp)
-      const indexName = matchResult.groups.name
+      const indexName = matchResult ? matchResult.groups.name : ""
       if (indexName) {
         await collection.dropIndex(indexName)
         ensured = await collection.createIndex(fieldOrSpec, options);

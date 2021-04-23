@@ -34,7 +34,8 @@ export async function downloadNewEntries(
       type,
       userPK,
       skapp,
-      skylink: el.skylink,
+      skylinkUnsanitized: el.skylink,
+      skylink: sanitizeSkylink(el.skylink),
       metadata: el.metadata,
       createdAt: new Date(el.timestamp*1000),
       scrapedAt: new Date(),
@@ -86,6 +87,12 @@ export async function settlePromises(
   }
 
   return added
+}
+
+export function sanitizeSkylink(skylinkRaw: string): string {
+  const indexRegexp = /^(.*\/)?(?<skylink>[a-zA-Z0-9-_]{46})\/?$/;
+  const matchResult = skylinkRaw.match(indexRegexp)
+  return matchResult ? matchResult.groups.skylink : skylinkRaw
 }
 
 export function shouldRun(noResultsCnt: number): boolean {

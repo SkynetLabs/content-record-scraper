@@ -24,6 +24,7 @@ export interface IContent {
   userPK: string;
   skapp: string;
   skylink: string;
+  skylinkUnsanitized: string;
   metadata: object;
   createdAt: Date;
   scrapedAt: Date;
