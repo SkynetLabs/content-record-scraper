@@ -74,7 +74,7 @@ export async function settlePromises(
         continue // TODO: investigate?
       }
 
-      tryLogEvent(eventsDB, {
+      await tryLogEvent(eventsDB, {
           context,
           type: eventsOnErrorType,
           error: result.reason,

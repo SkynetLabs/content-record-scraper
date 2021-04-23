@@ -42,7 +42,7 @@ export async function init(): Promise<void> {
         fetchSkyFeedUsers,
         eventsDB,
         throttle,
-      )
+      ).catch() // ignore, should have been handled already
     }
   );
 
@@ -56,7 +56,7 @@ export async function init(): Promise<void> {
         fetchSkapps,
         eventsDB,
         throttle,
-      )
+      ).catch() // ignore, should have been handled already
     }
   );
 
@@ -70,7 +70,7 @@ export async function init(): Promise<void> {
         fetchNewContent,
         eventsDB,
         throttle,
-      )
+        ).catch() // ignore, should have been handled already
     }
   );
 
@@ -84,7 +84,7 @@ export async function init(): Promise<void> {
         fetchInteractions,
         eventsDB,
         throttle
-      )
+      ).catch() // ignore, should have been handled already
     }
   );
 }
@@ -121,7 +121,7 @@ async function tryRun(
     console.log(`${end.toLocaleString()}: ${context} ended, took ${elapsed}ms.`)
 
     // insert event
-    tryLogEvent(eventsDB, {
+    await tryLogEvent(eventsDB, {
       context,
       type: EventType.ITERATION_SUCCESS,
       metadata: { duration: elapsed, added } ,
@@ -131,7 +131,7 @@ async function tryRun(
     console.log(`${start.toLocaleString()}: ${context} failed, error:`, error)
 
     // insert event
-    tryLogEvent(eventsDB, {
+    await tryLogEvent(eventsDB, {
       context,
       type: EventType.ITERATION_FAILURE,
       error: error.message,

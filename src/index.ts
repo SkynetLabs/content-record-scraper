@@ -1,6 +1,7 @@
 import { init as initCrons } from './crons';
 import { init as initDB } from './database';
 
+// tslint:disable-next-line: no-floating-promises
 (async () => {
   try {
     await initDB();
