@@ -67,7 +67,11 @@ async function fetchNewSkapps(
   
   // download the dictionary
   let added = 0;
-  const dict = await downloadFile<IDictionary<boolean>>(client, userPK, path)
+  const dict = await downloadFile<IDictionary<string | boolean>>(
+    client,
+    userPK,
+    path
+  )
   if (!dict) {
     throw new Error(`No skapps file found for user ${userPK}`)
   }
@@ -84,7 +88,7 @@ async function fetchNewSkapps(
     // NOTE: this is not an issue because we ensure the file hierarchy, this
     // might change in the future. For now though this is fine.
     try {
-      const ncIndexPath = `${CR_DATA_DOMAIN}/${skapp}/newcontent/index.json`
+      const ncIndexPath = `${domain}/${skapp}/newcontent/index.json`
       const ncIndex = await downloadFile(client, userPK, ncIndexPath)
       if (!ncIndex) {
         throw new Error(`No NC index file found for user ${userPK}`)
