@@ -7,7 +7,6 @@ services:
     depends_on:
       - "mongo"
     environment:
-      CR_DATA_DOMAIN: "crqa.hns"
       DEBUG_ENABLED: "false"
       MONGO_CONNECTION_STRING: "mongodb://mongo:27017"
   # leaderboard-api:

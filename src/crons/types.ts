@@ -1,3 +1,6 @@
+export * from './skystandards';
+import { Post } from './skystandards';
+
 export interface IDictionary<T> {
   [key: string]: T
 }
@@ -26,13 +29,21 @@ export interface IIndex {
   pageSize: number;
 }
 
-export interface IPage<IEntry> {
+export interface IPage {
   version: number;
 
   indexPath: string; // back reference to the index
   pagePath: string; // back reference to the path
+  entries: IRawEntry[];
 
-  entries: IEntry[];
+  // added by redsolver for feed DAC
+  $schema: string;
+  _self: string; // back reference to the path
+  items: Post[];
+}
+
+export function isFeedDACPage(page: IPage): boolean {
+  return Object.keys(page).includes('$schema');
 }
 
 export interface IRawEntry {

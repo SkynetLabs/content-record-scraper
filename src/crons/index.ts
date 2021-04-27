@@ -9,7 +9,9 @@ import { tryLogEvent } from '../database/utils';
 import { fetchInteractions } from './fetch_interactions';
 import { fetchNewContent } from './fetch_newcontent';
 import { fetchSkapps } from './fetch_skapps';
-import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
+import { fetchPosts } from './fetch_posts';
+import { fetchComments } from './fetch_comments';
+// import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
 import { CronHandler, Throttle } from './types';
 
 // tslint:disable-next-line: no-require-imports no-var-requires
@@ -32,19 +34,19 @@ export async function init(): Promise<void> {
     interval: 1_000
   }); // limit to 1r/s to be on the safe side
 
-  const fetchSkyFeedUsersMutex = new Mutex();
-  startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
-    () => {
-      tryRun(
-        'fetchSkyFeedUsers',
-        fetchSkyFeedUsersMutex,
-        fetchSkyFeedUsers,
-        eventsDB,
-        throttle,
-      ).catch() // ignore, should have been handled already
-    }
-  );
+  // const fetchSkyFeedUsersMutex = new Mutex();
+  // startCronJob(
+  //   DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
+  //   () => {
+  //     tryRun(
+  //       'fetchSkyFeedUsers',
+  //       fetchSkyFeedUsersMutex,
+  //       fetchSkyFeedUsers,
+  //       eventsDB,
+  //       throttle,
+  //     ).catch() // ignore, should have been handled already
+  //   }
+  // );
 
   const fetchSkappsMutex = new Mutex();
   startCronJob(
@@ -57,6 +59,34 @@ export async function init(): Promise<void> {
         eventsDB,
         throttle,
       ).catch() // ignore, should have been handled already
+    }
+  );
+
+  const fetchPostsMutex = new Mutex();
+  startCronJob(
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
+    () => {
+      tryRun(
+        'fetchPosts',
+        fetchPostsMutex,
+        fetchPosts,
+        eventsDB,
+        throttle,
+        ).catch() // ignore, should have been handled already
+    }
+  );
+
+  const fetchCommentsMutex = new Mutex();
+  startCronJob(
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
+    () => {
+      tryRun(
+        'fetchComments',
+        fetchCommentsMutex,
+        fetchComments,
+        eventsDB,
+        throttle,
+        ).catch() // ignore, should have been handled already
     }
   );
 

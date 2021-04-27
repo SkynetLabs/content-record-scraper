@@ -1,9 +1,9 @@
 import { Collection, ObjectId } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CR_DATA_DOMAIN, DEBUG_ENABLED } from '../consts';
-import { EntryType, EventType, IContent, IEvent } from '../database/types';
+import { DEBUG_ENABLED } from '../consts';
+import { EntryType, entryTypeToType, EventType, IContent, IEvent } from '../database/types';
 import { tryLogEvent } from '../database/utils';
-import { IPage, IRawEntry } from './types';
+import { IPage, isFeedDACPage, IRawEntry, Post } from './types';
 
 // The following constants define a cooldown mechanism of sorts. Crons will skip
 // an iteration if previous runs yielded 0 new entries. Every time we find 0 new
@@ -15,32 +15,36 @@ const SHOULD_RUN_FACTOR = 1.05;
 const SHOULD_RUN_MIN_PCT = 0.05;
 
 export async function downloadNewEntries(
-  type: EntryType,
+  dacDataDomain: string,
+  entryType: EntryType,
   client: SkynetClient,
   userPK: string,
   skapp: string,
   path: string,
   offset: number = 0
 ): Promise<IContent[]|null> {
-  const page = await downloadFile<IPage<IRawEntry>>(client, userPK, path)
+  const page = await downloadFile<IPage>(client, userPK, path)
   if (!page) {
     return null;
   }
 
-  return page.entries.slice(offset).map(el => {
-    return {
-      _id: new ObjectId(),
-      dac: CR_DATA_DOMAIN,
-      type,
+  const pageItems = isFeedDACPage(page)
+    ? page.items.slice(offset)
+    : page.entries.slice(offset);
+
+  const entries = [];
+  for (const item of pageItems) {
+    entries.push(pageItemToEntry(
+      dacDataDomain,
+      entryType,
       userPK,
       skapp,
-      skylinkUnsanitized: el.skylink,
-      skylink: sanitizeSkylink(el.skylink),
-      metadata: el.metadata,
-      createdAt: new Date(el.timestamp*1000),
-      scrapedAt: new Date(),
-    }
-  })
+      item,
+      page._self
+    ))
+  }
+
+  return entries
 }
 
 export async function downloadFile<T>(
@@ -87,6 +91,69 @@ export async function settlePromises(
   }
 
   return added
+}
+
+export function pageItemToEntry(
+  dacDataDomain: string,
+  entryType: EntryType,
+  userPK: string,
+  skapp: string,
+  item: IRawEntry | Post,
+  pageRef?: string // this is _self to be able construct the id in case of Post
+): IContent {
+  const entry: Partial<IContent> = {
+    _id: new ObjectId(),
+    dacDataDomain,
+    entryType,
+    userPK,
+    skapp,
+    scrapedAt: new Date(),
+  };
+
+  if (item.hasOwnProperty('skylink')) {
+    item = item as IRawEntry
+    entry.type = entryTypeToType(entryType),
+    entry.skylinkUnsanitized = item.skylink;
+    entry.skylink = sanitizeSkylink(item.skylink);
+    entry.identifier = entry.skylink;
+    entry.root = entry.identifier; // no parent
+    entry.metadata = item.metadata;
+    entry.createdAt = new Date(item.timestamp * 1000);
+  }
+
+  if (item.hasOwnProperty('id')) {
+    item = item as Post
+
+    const isPost =
+      entryType === EntryType.POST ||
+      entryType === EntryType.REPOST
+
+    const isRepost =
+      isPost &&
+      item.repostOf !== null &&
+      item.repostOf !== undefined;
+
+    const isComment =
+      entryType === EntryType.COMMENT &&
+      item.commentTo !== null &&
+      item.commentTo !== undefined
+
+    entry.type = entryTypeToType(isRepost ? EntryType.REPOST : entryType),
+    entry.identifier = `${pageRef}#${item.id}`;
+    entry.metadata = item;
+    entry.createdAt = new Date(item.ts);
+
+    // root refers to the entry this entry refers to, if it doesn't refer to
+    // anything it'll refer to itself which is its identifier
+    entry.root =
+      isComment
+      ? item.commentTo
+      : isRepost
+        ? item.repostOf
+        : entry.identifier
+  }
+
+  return entry as IContent;
 }
 
 export function sanitizeSkylink(skylinkRaw: string): string {

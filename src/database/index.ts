@@ -1,4 +1,4 @@
-import { TEST_USER_PUBKEY, EVENT_EXPIRY_IN_S } from '../consts';
+import { TEST_USER_PUBKEYS, EVENT_EXPIRY_IN_S } from '../consts';
 import { MongoDB } from "./mongodb"
 import { IUser } from "./types"
 import { upsertUser } from './utils'
@@ -31,14 +31,15 @@ export async function init(): Promise<MongoDB> {
   
   console.log(`${new Date().toLocaleString()}: DB initialized.`)
 
-  // add test user
-  try {
-    const inserted = await upsertUser(users, TEST_USER_PUBKEY)
-    if (inserted) {
-      console.log(`${new Date().toLocaleString()}: Test user '${TEST_USER_PUBKEY}' inserted.`)
+  // add test users
+  for (const testUserPK of TEST_USER_PUBKEYS) {
+    try {
+      if (await upsertUser(users, testUserPK)) {
+        console.log(`${new Date().toLocaleString()}: Upserted user '${testUserPK}'.`)
+      }
+    } catch (error) {
+      console.log(`${new Date().toLocaleString()}: Failed upserting test user '${testUserPK}'`, error);
     }
-  } catch (error) {
-    console.log(`${new Date().toLocaleString()}: Failed upserting test user`, error);
   }
 
   return mongo;

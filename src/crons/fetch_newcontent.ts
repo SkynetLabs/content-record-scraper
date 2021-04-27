@@ -1,6 +1,6 @@
 import { BulkWriteOperation, Collection, Int32 as NumberInt } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CR_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
+import { CONTENTRECORD_DAC_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
@@ -74,7 +74,7 @@ async function fetchEntries(
   let operations: BulkWriteOperation<IContent>[] = [];
 
   // define some variables
-  const domain = CR_DATA_DOMAIN;
+  const domain = CONTENTRECORD_DAC_DATA_DOMAIN;
   const path =`${domain}/${skapp}/newcontent/index.json`
   const { userPK, newContentConsecNoneFound } = user
 
@@ -93,6 +93,7 @@ async function fetchEntries(
   // download pages up until curr page
   for (let p = Number(currPage); p < index.currPageNumber; p++) {
     entries = await downloadNewEntries(
+      domain,
       EntryType.NEWCONTENT,
       client,
       userPK,
@@ -106,6 +107,7 @@ async function fetchEntries(
 
   // download entries up until curr offset
   entries = await downloadNewEntries(
+    domain,
     EntryType.NEWCONTENT,
     client,
     userPK,

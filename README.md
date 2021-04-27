@@ -67,7 +67,7 @@ scraper will log its current env variables when it boots.
 
 - **MONGO_CONNECTION_STRING**: defaults to `mongodb://localhost:27017`
 - **MONGO_DB_NAME**: defaults to `content-record`
-- **CR_DATA_DOMAIN**: defaults to `contentrecord.hns`
+- **CONTENTRECORD_DAC_DATA_DOMAIN**: defaults to `contentrecord.hns`
 - **SKYNET_PORTAL_URL**: defaults to `https://siasky.net`
 
 ## Usage
