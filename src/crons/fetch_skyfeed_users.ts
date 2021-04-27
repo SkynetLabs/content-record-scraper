@@ -1,6 +1,6 @@
 import { Collection } from 'mongodb';
 import { SignedRegistryEntry, SkynetClient } from 'skynet-js';
-import { SKYFEED_SEED_USER_PUBKEY, SKYNET_PORTAL_URL } from '../consts';
+import { SKYNET_PORTAL_URL } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../database/types';
@@ -22,12 +22,6 @@ export async function fetchSkyFeedUsers(throttle: Throttle<number>): Promise<num
   const db = await MongoDB.Connection();
   const userDB = await db.getCollection<IUser>(COLL_USERS);
   const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
-
-  // ensure the seed user is in our database
-  const inserted = await upsertUser(userDB, SKYFEED_SEED_USER_PUBKEY)
-  if (inserted) {
-    console.log(`${new Date().toLocaleString()}: Skyfeed seed user '${SKYFEED_SEED_USER_PUBKEY}' inserted.`)
-  }
 
   // fetch all known user pubkeys
   const usersResult = await userDB.aggregate<{users: string[]}>([
