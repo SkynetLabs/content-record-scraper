@@ -15,12 +15,32 @@ export const CONTENTRECORD_DAC_DATA_DOMAIN =
 export const FEED_DAC_DATA_DOMAIN =
   process.env.FEED_DAC_DATA_DOMAIN || 'skyfeed-dev.hns'
 
+export const PROFILE_DAC_DATA_DOMAIN = 
+  process.env.PROFILE_DAC_DATA_DOMAIN || 'skyuser.hns'
+
 export const SKYNET_PORTAL_URL = 'https://siasky.net'
 
 export const DEBUG_ENABLED = process.env.DEBUG_ENABLED === 'true';
 
 export const EVENT_EXPIRY_IN_S = 60 * 60 * 24 * 7; // last 7 days
 
+// allow disabling crons from env
+export const DISABLE_FETCH_SKYID_PROFILES =
+  process.env.DISABLE_FETCH_SKYID_PROFILES || true;
+export const DISABLE_FETCH_SKYFEED_USERS =
+  process.env.DISABLE_FETCH_SKYFEED_USERS || true;
+export const DISABLE_FETCH_SKAPPS =
+  process.env.DISABLE_FETCH_SKAPPS || false;
+export const DISABLE_FETCH_NEW_CONTENT =
+  process.env.DISABLE_FETCH_NEW_CONTENT || false;
+export const DISABLE_FETCH_INTERACTIONS =
+  process.env.DISABLE_FETCH_INTERACTIONS || false;
+export const DISABLE_FETCH_POSTS =
+  process.env.DISABLE_FETCH_POSTS || false;
+export const DISABLE_FETCH_COMMENTS =
+  process.env.DISABLE_FETCH_COMMENTS || false;
+
+// bootstrap db with some users
 export const TEST_USER_PUBKEYS = [
   "f301891b7e41b107beefe91a133d6efa8c7b0dfe0f5e39650c34b8311c365d39", // pj
   "7bc0ad743a775ae3f4b645a9d3f25a9cbb8a38ec8da59117c003e2b1bbdeb003", // test
@@ -32,4 +52,5 @@ export const TEST_USER_PUBKEYS = [
   "976354ad6f468cbf4ade859f2e95d3a5e1502ac37c2f5503256c8b01e1ed49e6", // test
   "d448f1562c20dbafa42badd9f88560cd1adb2f177b30f0aa048cb243e55d37bd", // redsolv
   "611f0e3730c028d618362aaaa19b00aa50bdf31480c627baf006abcc88f1c97a", // redsolv
+  "a79dacfd8d58c701eb3572eb417ee524795cc0231a646f93abdb8f5f1a2048cc", // stelb
 ]

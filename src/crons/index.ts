@@ -1,17 +1,19 @@
 import { Mutex } from 'async-mutex';
 import { CronCommand, CronJob } from 'cron';
 import { Collection } from 'mongodb';
-import { DEBUG_ENABLED } from '../consts';
+// tslint:disable-next-line: max-line-length
+import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_SKYID_PROFILES } from '../consts';
 import { COLL_EVENTS } from '../database/index';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent } from '../database/types';
 import { tryLogEvent } from '../database/utils';
+import { fetchComments } from './fetch_comments';
 import { fetchInteractions } from './fetch_interactions';
 import { fetchNewContent } from './fetch_newcontent';
-import { fetchSkapps } from './fetch_skapps';
 import { fetchPosts } from './fetch_posts';
-import { fetchComments } from './fetch_comments';
-// import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
+import { fetchSkapps } from './fetch_skapps';
+import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
+import { fetchSkyIDUserProfiles } from './fetch_skyid_user_profiles';
 import { CronHandler, Throttle } from './types';
 
 // tslint:disable-next-line: no-require-imports no-var-requires
@@ -34,31 +36,51 @@ export async function init(): Promise<void> {
     interval: 1_000
   }); // limit to 1r/s to be on the safe side
 
-  // const fetchSkyFeedUsersMutex = new Mutex();
-  // startCronJob(
-  //   DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
-  //   () => {
-  //     tryRun(
-  //       'fetchSkyFeedUsers',
-  //       fetchSkyFeedUsersMutex,
-  //       fetchSkyFeedUsers,
-  //       eventsDB,
-  //       throttle,
-  //     ).catch() // ignore, should have been handled already
-  //   }
-  // );
+  const fetchSkyIDUserProfilesMutex = new Mutex();
+  startCronJob(
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
+    () => {
+      if (!DISABLE_FETCH_SKYID_PROFILES) {
+        tryRun(
+          'fetchSkyIDUserProfiles',
+          fetchSkyIDUserProfilesMutex,
+          fetchSkyIDUserProfiles,
+          eventsDB,
+          throttle,
+        ).catch() // ignore, should have been handled already
+      }
+    }
+  );
+
+  const fetchSkyFeedUsersMutex = new Mutex();
+  startCronJob(
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
+    () => {
+      if (!DISABLE_FETCH_SKYFEED_USERS) {
+        tryRun(
+          'fetchSkyFeedUsers',
+          fetchSkyFeedUsersMutex,
+          fetchSkyFeedUsers,
+          eventsDB,
+          throttle,
+        ).catch() // ignore, should have been handled already
+      }
+    }
+  );
 
   const fetchSkappsMutex = new Mutex();
   startCronJob(
     DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
     () => {
-      tryRun(
-        'fetchSkapps',
-        fetchSkappsMutex,
-        fetchSkapps,
-        eventsDB,
-        throttle,
-      ).catch() // ignore, should have been handled already
+      if (!DISABLE_FETCH_SKAPPS) {
+        tryRun(
+          'fetchSkapps',
+          fetchSkappsMutex,
+          fetchSkapps,
+          eventsDB,
+          throttle,
+        ).catch() // ignore, should have been handled already
+      } 
     }
   );
 
@@ -66,13 +88,15 @@ export async function init(): Promise<void> {
   startCronJob(
     DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
-      tryRun(
-        'fetchPosts',
-        fetchPostsMutex,
-        fetchPosts,
-        eventsDB,
-        throttle,
-        ).catch() // ignore, should have been handled already
+      if (!DISABLE_FETCH_POSTS) {
+        tryRun(
+          'fetchPosts',
+          fetchPostsMutex,
+          fetchPosts,
+          eventsDB,
+          throttle,
+          ).catch() // ignore, should have been handled already
+      }
     }
   );
 
@@ -80,13 +104,15 @@ export async function init(): Promise<void> {
   startCronJob(
     DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
-      tryRun(
-        'fetchComments',
-        fetchCommentsMutex,
-        fetchComments,
-        eventsDB,
-        throttle,
-        ).catch() // ignore, should have been handled already
+      if (!DISABLE_FETCH_COMMENTS) {
+        tryRun(
+          'fetchComments',
+          fetchCommentsMutex,
+          fetchComments,
+          eventsDB,
+          throttle,
+          ).catch() // ignore, should have been handled already
+      }
     }
   );
 
@@ -94,13 +120,15 @@ export async function init(): Promise<void> {
   startCronJob(
     DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
-      tryRun(
-        'fetchNewContent',
-        fetchNewContentMutex,
-        fetchNewContent,
-        eventsDB,
-        throttle,
-        ).catch() // ignore, should have been handled already
+      if (!DISABLE_FETCH_NEW_CONTENT) {
+        tryRun(
+          'fetchNewContent',
+          fetchNewContentMutex,
+          fetchNewContent,
+          eventsDB,
+          throttle,
+          ).catch() // ignore, should have been handled already
+      }
     }
   );
 
@@ -108,13 +136,15 @@ export async function init(): Promise<void> {
   startCronJob(
     DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
-      tryRun(
-        'fetchInteractions',
-        fetchInteractionsMutex,
-        fetchInteractions,
-        eventsDB,
-        throttle
-      ).catch() // ignore, should have been handled already
+      if (!DISABLE_FETCH_INTERACTIONS) {
+        tryRun(
+          'fetchInteractions',
+          fetchInteractionsMutex,
+          fetchInteractions,
+          eventsDB,
+          throttle
+        ).catch() // ignore, should have been handled already
+      }
     }
   );
 }

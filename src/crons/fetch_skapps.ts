@@ -73,7 +73,7 @@ async function fetchNewSkapps(
       userPK,
       path
     )) || {};
-  
+
     // loop all of the skapps and add the ones we're missing
     for (const skapp of Object.keys(dict)) {
       if (!map[skapp]) {
