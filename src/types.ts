@@ -1,6 +1,7 @@
+export * from './skystandards'; // re-export
 import { ObjectId } from "mongodb";
 import { Int32 as NumberInt } from 'mongodb'
-
+import { Post } from "./skystandards";
 export enum EventType {
   ITERATION_SUCCESS = 'ITERATION_SUCCESS',
   ITERATION_FAILURE = 'ITERATION_FAILURE',
@@ -10,7 +11,7 @@ export enum EventType {
   FETCHPOSTS_ERROR = 'FETCHPOSTS_ERROR',
   FETCHCOMMENTS_ERROR = 'FETCHCOMMENTS_ERROR',
   FETCHSKYFEEDUSERS_ERROR = 'FETCHSKYFEEDUSERS_ERROR',
-  FETCHSKYIDUSERPROFILES_ERROR = 'FETCHSKYIDUSERPROFILES_ERROR',
+  FETCHUSERPROFILES_ERROR = 'FETCHUSERPROFILES_ERROR',
   FETCHSKAPPS_ERROR = 'FETCHSKAPPS_ERROR'
 }
 
@@ -90,7 +91,43 @@ export interface IUser {
   commentsCurrNumEntries: NumberInt;
   commentsConsecNoneFound: NumberInt;
 
+  mySkyProfile: IMySkyUserProfile;
+  skyIDProfile: IUserProfile;
+
   createdAt: Date;
+}
+
+export interface IMySkyUserProfile {
+  version: number;
+  username: string;
+  aboutMe?: string;
+  location?: string;
+  topics?: string[];
+  avatar?: unknown[];
+}
+
+export interface IHistoryLog {
+  updatedBy: string,
+  timestamp: Date
+}
+
+export interface IProfileIndex {
+  version: number;
+  profile: IMySkyUserProfile;
+  lastUpdatedBy: string;
+  historyLog: IHistoryLog[];
+}
+
+export interface IDictionary<T> {
+  [key: string]: T
+}
+
+export interface IUserProfile {
+  username: string;
+  aboutMe: string;
+  location: string;
+  avatar: string;
+  dapps: IDictionary<IDapp>;
 }
 
 export interface IEvent {
@@ -102,3 +139,54 @@ export interface IEvent {
   error?: string;
   createdAt: Date;
 }
+
+export interface IUserProfile {
+  username: string;
+  aboutMe: string;
+  location: string;
+  avatar: string;
+  dapps: IDictionary<IDapp>;
+}
+
+export interface IDapp {
+  url: string;
+  publicKey: string;
+  img: string;
+}
+
+export interface IIndex {
+  version: number;
+
+  currPageNumber: number;
+  currPageNumEntries: number;
+
+  pagePaths: string[];
+  pageSize: number;
+}
+
+export interface IPage {
+  version: number;
+
+  indexPath: string; // back reference to the index
+  pagePath: string; // back reference to the path
+  entries: IRawEntry[];
+
+  // added by redsolver for feed DAC
+  $schema: string;
+  _self: string; // back reference to the path
+  items: Post[];
+}
+
+export function isFeedDACPage(page: IPage): boolean {
+  return Object.keys(page).includes('$schema');
+}
+
+export interface IRawEntry {
+  skylink: string;    // skylink
+  metadata: object;   // should be valid JSON
+  timestamp: number;  // unix timestamp of recording
+}
+
+export type Throttle<T> = (fn: Function) => () => Promise<T>
+
+export type CronHandler<T> = (throttle: Throttle<T>) => Promise<T>

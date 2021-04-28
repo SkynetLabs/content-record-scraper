@@ -1,5 +1,5 @@
 import { Collection, Int32 as NumberInt } from 'mongodb';
-import { IEvent, IUser } from './types';
+import { IEvent, IUser } from '../types';
 
 export async function upsertUser(userDB: Collection<IUser>, userPK: string): Promise<boolean> {
   const { upsertedCount } = await userDB.updateOne(
@@ -14,7 +14,7 @@ export async function upsertUser(userDB: Collection<IUser>, userPK: string): Pro
 
         contentInteractionsCurrPage : new NumberInt(0),
         contentInteractionsNumEntries: new NumberInt(0),
-        contentInteractionsNoneFound: new NumberInt(0),
+        contentInteractionsConsecNoneFound: new NumberInt(0),
 
         postsCurrPage: new NumberInt(0),
         postsCurrNumEntries: new NumberInt(0),

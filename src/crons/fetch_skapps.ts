@@ -3,8 +3,8 @@ import { SkynetClient } from 'skynet-js';
 import { CONTENTRECORD_DAC_DATA_DOMAIN, FEED_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EventType, IEvent, IUser } from '../database/types';
-import { IDictionary, Throttle } from './types';
+import { EventType, IEvent, IUser } from '../types';
+import { IDictionary, Throttle } from '../types';
 import { downloadFile, settlePromises } from './utils';
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users

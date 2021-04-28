@@ -2,10 +2,10 @@ import { Mutex } from 'async-mutex';
 import { CronCommand, CronJob } from 'cron';
 import { Collection } from 'mongodb';
 // tslint:disable-next-line: max-line-length
-import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_SKYID_PROFILES } from '../consts';
+import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_USER_PROFILES } from '../consts';
 import { COLL_EVENTS } from '../database/index';
 import { MongoDB } from '../database/mongodb';
-import { EventType, IEvent } from '../database/types';
+import { EventType, IEvent } from '../types';
 import { tryLogEvent } from '../database/utils';
 import { fetchComments } from './fetch_comments';
 import { fetchInteractions } from './fetch_interactions';
@@ -13,8 +13,8 @@ import { fetchNewContent } from './fetch_newcontent';
 import { fetchPosts } from './fetch_posts';
 import { fetchSkapps } from './fetch_skapps';
 import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
-import { fetchSkyIDUserProfiles } from './fetch_skyid_user_profiles';
-import { CronHandler, Throttle } from './types';
+import { fetchUserProfiles } from './fetch_user_profiles';
+import { CronHandler, Throttle } from '../types';
 
 // tslint:disable-next-line: no-require-imports no-var-requires
 const pThrottle = require('p-throttle');
@@ -36,15 +36,15 @@ export async function init(): Promise<void> {
     interval: 1_000
   }); // limit to 1r/s to be on the safe side
 
-  const fetchSkyIDUserProfilesMutex = new Mutex();
+  const fetchUserProfilesMutex = new Mutex();
   startCronJob(
     DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
     () => {
-      if (!DISABLE_FETCH_SKYID_PROFILES) {
+      if (!DISABLE_FETCH_USER_PROFILES) {
         tryRun(
-          'fetchSkyIDUserProfiles',
-          fetchSkyIDUserProfilesMutex,
-          fetchSkyIDUserProfiles,
+          'fetchUserProfiles',
+          fetchUserProfilesMutex,
+          fetchUserProfiles,
           eventsDB,
           throttle,
         ).catch() // ignore, should have been handled already

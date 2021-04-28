@@ -3,8 +3,8 @@ import { SkynetClient } from 'skynet-js';
 import { CONTENTRECORD_DAC_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EntryType, EventType, IContent, IEvent, IUser } from '../database/types';
-import { IIndex, Throttle } from './types';
+import { EntryType, EventType, IContent, IEvent, IUser } from '../types';
+import { IIndex, Throttle } from '../types';
 import { downloadFile, downloadNewEntries, settlePromises, shouldRun } from './utils';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users

@@ -1,9 +1,9 @@
 import { Collection, ObjectId } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { DEBUG_ENABLED } from '../consts';
-import { EntryType, entryTypeToType, EventType, IContent, IEvent } from '../database/types';
+import { EntryType, entryTypeToType, EventType, IContent, IEvent } from '../types';
 import { tryLogEvent } from '../database/utils';
-import { IPage, isFeedDACPage, IRawEntry, Post } from './types';
+import { IPage, isFeedDACPage, IRawEntry, Post } from '../types';
 
 // The following constants define a cooldown mechanism of sorts. Crons will skip
 // an iteration if previous runs yielded 0 new entries. Every time we find 0 new

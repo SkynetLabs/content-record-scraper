@@ -15,8 +15,8 @@ export const CONTENTRECORD_DAC_DATA_DOMAIN =
 export const FEED_DAC_DATA_DOMAIN =
   process.env.FEED_DAC_DATA_DOMAIN || 'skyfeed-dev.hns'
 
-export const PROFILE_DAC_DATA_DOMAIN = 
-  process.env.PROFILE_DAC_DATA_DOMAIN || 'skyuser.hns'
+export const MYSKY_PROFILE_DAC_DATA_DOMAIN = 
+  process.env.MYSKY_PROFILE_DAC_DATA_DOMAIN || 'skyuser.hns'
 
 export const SKYNET_PORTAL_URL = 'https://siasky.net'
 
@@ -25,18 +25,24 @@ export const DEBUG_ENABLED = process.env.DEBUG_ENABLED === 'true';
 export const EVENT_EXPIRY_IN_S = 60 * 60 * 24 * 7; // last 7 days
 
 // allow disabling crons from env
-export const DISABLE_FETCH_SKYID_PROFILES =
-  process.env.DISABLE_FETCH_SKYID_PROFILES || true;
+export const DISABLE_FETCH_USER_PROFILES =
+  process.env.DISABLE_FETCH_USER_PROFILES || false;
+
 export const DISABLE_FETCH_SKYFEED_USERS =
   process.env.DISABLE_FETCH_SKYFEED_USERS || true;
+
 export const DISABLE_FETCH_SKAPPS =
   process.env.DISABLE_FETCH_SKAPPS || false;
+
 export const DISABLE_FETCH_NEW_CONTENT =
   process.env.DISABLE_FETCH_NEW_CONTENT || false;
+
 export const DISABLE_FETCH_INTERACTIONS =
   process.env.DISABLE_FETCH_INTERACTIONS || false;
+
 export const DISABLE_FETCH_POSTS =
   process.env.DISABLE_FETCH_POSTS || false;
+
 export const DISABLE_FETCH_COMMENTS =
   process.env.DISABLE_FETCH_COMMENTS || false;
 

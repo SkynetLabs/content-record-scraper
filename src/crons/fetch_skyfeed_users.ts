@@ -1,14 +1,12 @@
 import { Collection } from 'mongodb';
-import { SignedRegistryEntry, SkynetClient } from 'skynet-js';
+import { SkynetClient } from 'skynet-js';
 import { SKYNET_PORTAL_URL } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EventType, IEvent, IUser } from '../database/types';
 import { upsertUser } from '../database/utils';
-import { IDictionary, IUserProfile, Throttle } from './types';
+import { EventType, IDictionary, IEvent, IUser, Throttle } from '../types';
 import { settlePromises } from './utils';
 
-const DATAKEY_PROFILE = "profile"
 const DATAKEY_FOLLOWING = "skyfeed-following"
 const DATAKEY_FOLLOWERS = "skyfeed-followers"
 
@@ -81,7 +79,15 @@ async function fetchUsers(
   userPK: string,
 ): Promise<number> {
   // fetch user profile
-  const profile = await fetchUserProfile(client, userPK)
+  const user = await userDB.findOne({ userPK })
+  if (!user) {
+    return 0;
+  }
+
+  const profile = user.skyIDProfile
+  if (!profile) {
+    return 0;
+  }
 
   // sanity check skyfeed is listed in the user's dapps
   if (!profile.dapps.skyfeed) {
@@ -97,49 +103,19 @@ async function fetchUsers(
 
   // find out which users are new
   const discovered = [];
-  for (const user of relations) {
-    if (!userMap[user]) {
-      discovered.push(user)
+  for (const relation of relations) {
+    if (!userMap[relation]) {
+      discovered.push(relation)
     }
   }
 
   // upsert the new users
   let total = 0;
-  for (const user of discovered) {
-    if (await upsertUser(userDB, user)) {
+  for (const relation of discovered) {
+    if (await upsertUser(userDB, relation)) {
       total++;
     }
   }
 
   return total;
-}
-
-async function fetchUserProfile(
-  client: SkynetClient,
-  userPK: string,
-): Promise<IUserProfile> {
-  // fetch user's profile skylink
-  const response: SignedRegistryEntry = await client.registry.getEntry(userPK, DATAKEY_PROFILE)
-  if (!response || !response.entry) {
-    throw new Error(`Could not find profile for user '${userPK}'`)
-  }
-
-  // fetch user's profile data
-  let profileDataStr: string
-  try {
-    const content = await client.getFileContent<string>(response.entry.data)
-    profileDataStr = content.data
-  } catch (error) {
-    throw new Error(`Profile was not found for user '${userPK}', err ${error.message}`)
-  }
-
-  // try to parse it as JSON
-  let profile: IUserProfile
-  try {
-    profile = JSON.parse(profileDataStr)
-  } catch (error) {
-    throw new Error(`Profile was not valid JSON for user '${userPK}'`)
-  }
-
-  return profile;
 }

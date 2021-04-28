@@ -1,6 +1,6 @@
 import { TEST_USER_PUBKEYS, EVENT_EXPIRY_IN_S } from '../consts';
 import { MongoDB } from "./mongodb"
-import { IUser } from "./types"
+import { IUser } from "../types"
 import { upsertUser } from './utils'
 
 export const COLL_ENTRIES = 'entries'
