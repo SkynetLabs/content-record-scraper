@@ -3,7 +3,7 @@ import { SkynetClient } from 'skynet-js';
 import { CONTENTRECORD_DAC_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EntryType, EventType, IContent, IEvent, IUser } from '../types';
+import { DataLink, EntryType, EventType, IContent, IEvent, IUser } from '../types';
 import { IIndex, Throttle } from '../types';
 import { downloadFile, downloadNewEntries, settlePromises, shouldRun } from './utils';
 
@@ -81,24 +81,30 @@ async function fetchEntries(
   // grab some info from the user object
   const {
     newContentCurrPage: currPage,
-    newContentCurrNumEntries: currOffset
+    newContentCurrNumEntries: currOffset,
+    newContentIndexDataLink: cachedIndexDataLink,
+    newContentCurrPageDataLink: cachedPageDataLink,
   } = user;
 
   // fetch the index
-  const index = await downloadFile<IIndex>(client, userPK, path)
+  const {cached, data: index, dataLink: indexDataLink} = await downloadFile<IIndex>(client, userPK, path, cachedIndexDataLink)
+  if (cached) {
+    return 0; // no changes since last download
+  }
   if (!index) {
     throw new Error(`No new content index file found for user ${userPK}`)
   }
 
   // download pages up until curr page
   for (let p = Number(currPage); p < index.currPageNumber; p++) {
-    entries = await downloadNewEntries(
+    [entries,] = await downloadNewEntries(
       domain,
       EntryType.NEWCONTENT,
       client,
       userPK,
       skapp,
-      `${domain}/${skapp}/newcontent/page_${p}.json`
+      `${domain}/${skapp}/newcontent/page_${p}.json`,
+      cachedPageDataLink
     )
     for (const entry of entries) {
       operations.push({ insertOne: { document: entry }})
@@ -106,13 +112,15 @@ async function fetchEntries(
   }
 
   // download entries up until curr offset
-  entries = await downloadNewEntries(
+  let currPageDataLink: DataLink;
+  [entries, currPageDataLink] = await downloadNewEntries(
     domain,
     EntryType.NEWCONTENT,
     client,
     userPK,
     skapp,
     `${domain}/${skapp}/newcontent/page_${index.currPageNumber}.json`,
+    cachedPageDataLink,
     Number(currOffset)
   )
   for (const entry of entries) {
@@ -137,6 +145,8 @@ async function fetchEntries(
       newContentCurrPage: index.currPageNumber,
       newContentCurrNumEntries: index.currPageNumEntries,
       newContentConsecNoneFound: new NumberInt(consecNoneFound),
+      newContentIndexDataLink: indexDataLink,
+      newContentCurrPageDataLink: currPageDataLink,
     }
   })
   return numEntries

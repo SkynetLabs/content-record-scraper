@@ -3,7 +3,7 @@ import { SkynetClient } from 'skynet-js';
 import { CONTENTRECORD_DAC_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EntryType, EventType, IContent, IEvent, IUser } from '../types';
+import { DataLink, EntryType, EventType, IContent, IEvent, IUser } from '../types';
 import { IIndex, Throttle } from '../types';
 import { downloadFile, downloadNewEntries, settlePromises, shouldRun } from './utils';
 
@@ -81,24 +81,30 @@ async function fetchEntries(
   // grab some info from the user object
   const {
     contentInteractionsCurrPage: currPage,
-    contentInteractionsNumEntries: currOffset
+    contentInteractionsNumEntries: currOffset,
+    contentInteractionsIndexDataLink: cachedIndexDataLink,
+    contentInteractionsCurrPageDataLink: cachedPageDataLink,
   } = user;
 
   // fetch the index
-  const index = await downloadFile<IIndex>(client, userPK, path)
+  const {cached, data: index, dataLink: indexDataLink} = await downloadFile<IIndex>(client, userPK, path, cachedIndexDataLink)
+  if (cached) {
+    return 0; // no changes since last download
+  }
   if (!index) {
     throw new Error(`No interactions index file found for user ${userPK}`)
   }
 
   // download pages up until curr page
   for (let p = Number(currPage); p < index.currPageNumber; p++) {
-    entries = await downloadNewEntries(
+    [entries,] = await downloadNewEntries(
       domain,
       EntryType.INTERACTION,
       client,
       userPK,
       skapp,
-      `${domain}/${skapp}/interactions/page_${p}.json`
+      `${domain}/${skapp}/interactions/page_${p}.json`,
+      cachedPageDataLink
     )
     for (const entry of entries) {
       operations.push({ insertOne: { document: entry }})
@@ -106,13 +112,15 @@ async function fetchEntries(
   }
 
   // download entries up until curr offset
-  entries = await downloadNewEntries(
+  let currPageDataLink: DataLink;
+  [entries, currPageDataLink] = await downloadNewEntries(
     domain,
     EntryType.INTERACTION,
     client,
     userPK,
     skapp,
     `${domain}/${skapp}/interactions/page_${index.currPageNumber}.json`,
+    cachedPageDataLink,
     Number(currOffset)
   )
   for (const entry of entries) {
@@ -137,6 +145,8 @@ async function fetchEntries(
       contentInteractionsCurrPage: index.currPageNumber,
       contentInteractionsNumEntries: index.currPageNumEntries,
       contentInteractionsConsecutiveNoneFound: new NumberInt(consecNoneFound),
+      contentInteractionsIndexDataLink: indexDataLink,
+      contentInteractionsCurrPageDataLink: currPageDataLink,
     }
   })
 

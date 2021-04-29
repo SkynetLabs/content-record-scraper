@@ -11,19 +11,27 @@ export async function upsertUser(userDB: Collection<IUser>, userPK: string): Pro
         newContentCurrPage : new NumberInt(0),
         newContentCurrNumEntries: new NumberInt(0),
         newContentConsecNoneFound: new NumberInt(0),
-
-        contentInteractionsCurrPage : new NumberInt(0),
+        newContentIndexDataLink: "",
+        newContentCurrPageDataLink: "",
+      
+        contentInteractionsCurrPage: new NumberInt(0),
         contentInteractionsNumEntries: new NumberInt(0),
         contentInteractionsConsecNoneFound: new NumberInt(0),
+        contentInteractionsIndexDataLink: "",
+        contentInteractionsCurrPageDataLink: "",
 
         postsCurrPage: new NumberInt(0),
         postsCurrNumEntries: new NumberInt(0),
         postsConsecNoneFound: new NumberInt(0),
+        postsIndexDataLink: "",
+        postsCurrPageDataLink: "",
 
         commentsCurrPage: new NumberInt(0),
         commentsCurrNumEntries: new NumberInt(0),
         commentsConsecNoneFound: new NumberInt(0),
-        
+        commentsIndexDataLink: "",
+        commentsCurrPageDataLink: "",
+
         createdAt: new Date(),
       }
     },

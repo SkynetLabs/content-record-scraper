@@ -68,11 +68,14 @@ async function fetchNewSkapps(
   for (const domain of dacDataDomains) {
     // download the dictionary
     const path =`${domain}/skapps.json`
-    const dict = (await downloadFile<IDictionary<string | boolean>>(
+    const { data: dict } = (await downloadFile<IDictionary<string | boolean>>(
       client,
       userPK,
       path
-    )) || {};
+    ));
+    if (!dict) {
+      continue;
+    }
 
     // loop all of the skapps and add the ones we're missing
     for (const skapp of Object.keys(dict)) {

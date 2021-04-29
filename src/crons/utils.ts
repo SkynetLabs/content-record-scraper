@@ -1,7 +1,7 @@
 import { Collection, ObjectId } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { DEBUG_ENABLED } from '../consts';
-import { EntryType, entryTypeToType, EventType, IContent, IEvent } from '../types';
+import { DataLink, EntryType, entryTypeToType, EventType, IContent, IEvent, JSONDownloadResponse } from '../types';
 import { tryLogEvent } from '../database/utils';
 import { IPage, isFeedDACPage, IRawEntry, Post } from '../types';
 
@@ -21,11 +21,13 @@ export async function downloadNewEntries(
   userPK: string,
   skapp: string,
   path: string,
+  cachedDataLink: string = "",
   offset: number = 0
-): Promise<IContent[]|null> {
-  const page = await downloadFile<IPage>(client, userPK, path)
-  if (!page) {
-    return null;
+): Promise<[IContent[], DataLink]> {
+  // TODO: Pass cachedDataLink to SDK
+  const {cached, data: page, dataLink } = await downloadFile<IPage>(client, userPK, path)
+  if (cached || !page) {
+    return [[], ""];
   }
 
   const pageItems = isFeedDACPage(page)
@@ -44,19 +46,33 @@ export async function downloadNewEntries(
     ))
   }
 
-  return entries
+  return [
+    entries.filter(Boolean), // filters out null entries
+    dataLink
+  ]
 }
 
 export async function downloadFile<T>(
   client: SkynetClient,
   userPK: string,
   path: string,
-): Promise<T|null> {
+  cachedDataLink: string = "",
+): Promise<JSONDownloadResponse<T>> {
+  // TODO: pass cachedDataLink to SDK
   const response = await client.file.getJSON(userPK, path)
-  if (!response || !response.data) {
-    return null;
+  if (response && response.dataLink === cachedDataLink) {
+    return { data: null, dataLink: cachedDataLink, cached: true}
   }
-  return response.data as unknown as T;
+
+  if (response && response.data) {
+    return {
+      data: response.data as unknown as T,
+      dataLink: response.dataLink,
+      cached: false
+    }
+  }
+
+  return { data: null, dataLink: null, cached: false}
 }
 
 export async function settlePromises(
@@ -100,7 +116,16 @@ export function pageItemToEntry(
   skapp: string,
   item: IRawEntry | Post,
   pageRef?: string // this is _self to be able construct the id in case of Post
-): IContent {
+): IContent | null {
+  // invalid page item
+  const isValidPageItem =
+    item.hasOwnProperty('id') && (item as Post).id ||
+    item.hasOwnProperty('skylink') && sanitizeSkylink((item as IRawEntry).skylink)
+
+  if (!isValidPageItem) {
+    return null
+  }
+
   const entry: Partial<IContent> = {
     _id: new ObjectId(),
     dacDataDomain,
@@ -157,9 +182,12 @@ export function pageItemToEntry(
 }
 
 export function sanitizeSkylink(skylinkRaw: string): string {
-  const indexRegexp = /^(.*\/)?(?<skylink>[a-zA-Z0-9-_]{46})\/?$/;
+  const indexRegexp = /^(.*[\/:])?(?<skylink>[a-zA-Z0-9-_]{46})\/?$/;
   const matchResult = skylinkRaw.match(indexRegexp)
-  return matchResult ? matchResult.groups.skylink : skylinkRaw
+  if (!matchResult || !matchResult.groups) {
+    return ""
+  }
+  return matchResult.groups.skylink
 }
 
 export function shouldRun(noResultsCnt: number): boolean {

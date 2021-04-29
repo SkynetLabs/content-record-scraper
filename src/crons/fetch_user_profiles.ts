@@ -60,7 +60,7 @@ async function fetchProfiles(
   let found = 0;
   // fetch MySky profile
   const path = `${MYSKY_PROFILE_DAC_DATA_DOMAIN}/${DATAKEY_MYSKY_PROFILE}.json`;
-  const mySkyProfile = await downloadFile<IMySkyUserProfile>(
+  const { data: mySkyProfile } = await downloadFile<IMySkyUserProfile>(
     client,
     userPK,
     path

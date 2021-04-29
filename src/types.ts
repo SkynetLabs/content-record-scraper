@@ -78,18 +78,26 @@ export interface IUser {
   newContentCurrPage: NumberInt;
   newContentCurrNumEntries: NumberInt;
   newContentConsecNoneFound: NumberInt;
+  newContentIndexDataLink: string;
+  newContentCurrPageDataLink: string;
 
   contentInteractionsCurrPage: NumberInt;
   contentInteractionsNumEntries: NumberInt;
   contentInteractionsConsecNoneFound: NumberInt;
+  contentInteractionsIndexDataLink: string;
+  contentInteractionsCurrPageDataLink: string;
 
   postsCurrPage: NumberInt;
   postsCurrNumEntries: NumberInt;
   postsConsecNoneFound: NumberInt;
+  postsIndexDataLink: string;
+  postsCurrPageDataLink: string;
 
   commentsCurrPage: NumberInt;
   commentsCurrNumEntries: NumberInt;
   commentsConsecNoneFound: NumberInt;
+  commentsIndexDataLink: string;
+  commentsCurrPageDataLink: string;
 
   mySkyProfile: IMySkyUserProfile;
   skyIDProfile: IUserProfile;
@@ -190,3 +198,11 @@ export interface IRawEntry {
 export type Throttle<T> = (fn: Function) => () => Promise<T>
 
 export type CronHandler<T> = (throttle: Throttle<T>) => Promise<T>
+
+export type JSONDownloadResponse<T> = {
+  data: T | null;
+  dataLink: DataLink;
+  cached: boolean;
+}
+
+export type DataLink = string;
