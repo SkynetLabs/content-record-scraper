@@ -8,9 +8,10 @@ Content Record and persist those in a Mongo database.
 
 ## Data Model
 
-In the mongo database there will only be two collections:
+In the mongo database there will be three collections:
 
 - `entries`
+- `events`
 - `users`
 
 In the `entries` collection we keep track of all of the content that gets
@@ -19,21 +20,29 @@ created, alongside all the interactions that occur with that content. In the
 state prevents the scraper from unnecessarily re-indexing already indexed
 content and/or interactions.
 
+The `events` collection is only there for debugging purposes and contains some
+extra information about how the scraper is performing. Things like duration,
+errors, amount of entities added and so on. This collection automatically
+removes entries older than a week to ensure this collection does not perpetually
+grows in size.
+
 The users are very important as they will need to be feeded to the scraper. The
 scraper does not extend its user base on its own, it will only scan the content
 records for the users it knows, and keep those up-to-date.
 
-In the future we might extend the scraper with an extra cron job that scrapes
-friends from friend list on Skyfeed to have some form of user discovery
-mechanism built in.
-
 ## Architecture
 
-The scraper is built around three cronjobs:
+The scraper is built around a series of cronjobs that scrape the entries from
+the Content Record DAC and the Feed DAC. Therefore we currently have the
+following cronjobs:
 
 - fetch skapps
-- fetch new content
-- fetch interactions
+- fetch user profiles
+- fetch skyfeed users
+- fetch comments (Feed DAC)
+- fetch posts  (Feed DAC)
+- fetch new content (CR DAC)
+- fetch interactions (CR DAC)
 
 The cronjobs run every 15 minutes, however they are guarded by a mutex so if a
 cron is not finished after 15 minutes, it will not spin a new worker, instead it
@@ -70,10 +79,34 @@ scraper will log its current env variables when it boots.
 - **CONTENTRECORD_DAC_DATA_DOMAIN**: defaults to `contentrecord.hns`
 - **SKYNET_PORTAL_URL**: defaults to `https://siasky.net`
 
+The following variables allow temporarily disabling some of the crons.
+
+- **DISABLE_FETCH_USER_PROFILES**
+- **DISABLE_FETCH_SKYFEED_USERS**
+- **DISABLE_FETCH_SKAPPS**
+- **DISABLE_FETCH_NEW_CONTENT**
+- **DISABLE_FETCH_INTERACTIONS**
+- **DISABLE_FETCH_POSTS**
+- **DISABLE_FETCH_COMMENTS**
+
+If you run the scraper with the following environment variable, it will alter
+the cron time to run every job every minute.
+
+- **DEBUG_ENABLED**
+
+To scrape the DACs we need to specify the data domains. These variables will
+default to the correct domain, but for debugging purposes it can be useful to
+alter these:
+
+- **CONTENTRECORD_DAC_DATA_DOMAIN**
+- **FEED_DAC_DATA_DOMAIN**
+- **MYSKY_PROFILE_DAC_DATA_DOMAIN**
+
 ## Usage
 
 ```shell
 docker-compose up -d
+npm run start
 ```
 
 If you want to develop or debug manually, you can comment out the scraper
@@ -85,19 +118,8 @@ That data are users, so there is a user discovery part that is not included in
 the scraper, instead there's another process that simply inserts an empty user
 object in the database, which gets picked up by the scraper from there on out.
 
-This is important if you want to debug the scraper. To do so, simply insert the
-following record in the `users` collection of the Mongo DB:
-
-```json
-db.getCollection("users").insertOne({
-  "pubkey": "f301891b7e41b107beefe91a133d6efa8c7b0dfe0f5e39650c34b8311c365d39",
-  "skapps": [],
-  "newContentCurrPage": NumberInt(0),
-  "newContentCurrNumEntries": NumberInt(0),
-  "contentInteractionsCurrPage": NumberInt(0),
-  "contentInteractionsNumEntries": NumberInt(0)
-})
-```
+This is important if you want to debug the scraper. To do so, simply insert a
+user record manually. See `utils.ts` for an example of an empty user object.
 
 You can do this through the mongo shell or use a mongo client like Robo3T or
 MongoDB Compass. **For convenience the above users is inserted automatically when
