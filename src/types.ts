@@ -2,6 +2,7 @@ export * from './skystandards'; // re-export
 import { ObjectId } from "mongodb";
 import { Int32 as NumberInt } from 'mongodb'
 import { Post } from "./skystandards";
+import { SkynetClient } from 'skynet-js';
 export enum EventType {
   ITERATION_SUCCESS = 'ITERATION_SUCCESS',
   ITERATION_FAILURE = 'ITERATION_FAILURE',
@@ -197,7 +198,7 @@ export interface IRawEntry {
 
 export type Throttle<T> = (fn: Function) => () => Promise<T>
 
-export type CronHandler<T> = (throttle: Throttle<T>) => Promise<T>
+export type CronHandler<T> = (client: SkynetClient, throttle: Throttle<T>) => Promise<T>
 
 export type JSONDownloadResponse<T> = {
   data: T | null;

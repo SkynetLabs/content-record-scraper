@@ -1,10 +1,9 @@
 import { Collection } from 'mongodb';
-import { SkynetClient, SignedRegistryEntry } from 'skynet-js';
-import { MYSKY_PROFILE_DAC_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
+import { SignedRegistryEntry, SkynetClient } from 'skynet-js';
+import { MYSKY_PROFILE_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EventType, IEvent, IUser } from '../types';
-import { IMySkyUserProfile, IUserProfile, Throttle } from '../types';
+import { EventType, IEvent, IMySkyUserProfile, IUser, IUserProfile, Throttle } from '../types';
 import { downloadFile, settlePromises } from './utils';
 
 const DATAKEY_MYSKY_PROFILE = "profileIndex"
@@ -12,10 +11,7 @@ const DATAKEY_SKYID_PROFILE = "profile"
 
 // fetchUserProfiles is a simple scraping algorithm that scrapes user
 // profiles for all users.
-export async function fetchUserProfiles(throttle: Throttle<number>): Promise<number> {
-  // create a client
-  const client = new SkynetClient(SKYNET_PORTAL_URL);
-  
+export async function fetchUserProfiles(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
   // create a connection with the database and fetch the users DB
   const db = await MongoDB.Connection();
   const usersDB = await db.getCollection<IUser>(COLL_USERS);

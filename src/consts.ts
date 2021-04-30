@@ -13,7 +13,7 @@ export const CONTENTRECORD_DAC_DATA_DOMAIN =
   process.env.CONTENTRECORD_DAC_DATA_DOMAIN || 'crqa.hns'
 
 export const FEED_DAC_DATA_DOMAIN =
-  process.env.FEED_DAC_DATA_DOMAIN || 'skyfeed-dev.hns'
+  process.env.FEED_DAC_DATA_DOMAIN || 'feed-dac.hns'
 
 export const MYSKY_PROFILE_DAC_DATA_DOMAIN = 
   process.env.MYSKY_PROFILE_DAC_DATA_DOMAIN || 'skyuser.hns'
@@ -60,3 +60,5 @@ export const TEST_USER_PUBKEYS = [
   "611f0e3730c028d618362aaaa19b00aa50bdf31480c627baf006abcc88f1c97a", // redsolv
   "a79dacfd8d58c701eb3572eb417ee524795cc0231a646f93abdb8f5f1a2048cc", // stelb
 ]
+
+export const SKYNET_JWT = process.env.SKYNET_JWT;

@@ -9,10 +9,7 @@ import { downloadFile, settlePromises } from './utils';
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
-export async function fetchSkapps(throttle: Throttle<number>): Promise<number> {
-  // create a client
-  const client = new SkynetClient("https://siasky.net");
-  
+export async function fetchSkapps(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
   // create a connection with the database and fetch all collections
   const db = await MongoDB.Connection();
   const usersDB = await db.getCollection<IUser>(COLL_USERS);
@@ -67,7 +64,7 @@ async function fetchNewSkapps(
   const dacDataDomains = [CONTENTRECORD_DAC_DATA_DOMAIN, FEED_DAC_DATA_DOMAIN]
   for (const domain of dacDataDomains) {
     // download the dictionary
-    const path =`${domain}/skapps.json`
+    const path = `${domain}/skapps.json`
     const { data: dict } = (await downloadFile<IDictionary<string | boolean>>(
       client,
       userPK,

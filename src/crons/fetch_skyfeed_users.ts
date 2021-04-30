@@ -1,6 +1,5 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { SKYNET_PORTAL_URL } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { upsertUser } from '../database/utils';
@@ -12,10 +11,7 @@ const DATAKEY_FOLLOWERS = "skyfeed-followers"
 
 // fetchSkyFeedUsers is a simple scraping algorithm that scrapes all known users
 // from skyfeed.
-export async function fetchSkyFeedUsers(throttle: Throttle<number>): Promise<number> {
-  // create a client
-  const client = new SkynetClient(SKYNET_PORTAL_URL);
-  
+export async function fetchSkyFeedUsers(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
   // create a connection with the database and fetch the users DB
   const db = await MongoDB.Connection();
   const userDB = await db.getCollection<IUser>(COLL_USERS);

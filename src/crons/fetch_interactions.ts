@@ -1,18 +1,14 @@
 import { BulkWriteOperation, Collection, Int32 as NumberInt } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CONTENTRECORD_DAC_DATA_DOMAIN, SKYNET_PORTAL_URL } from '../consts';
+import { CONTENTRECORD_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { DataLink, EntryType, EventType, IContent, IEvent, IUser } from '../types';
-import { IIndex, Throttle } from '../types';
+import { DataLink, EntryType, EventType, IContent, IEvent, IIndex, IUser, Throttle } from '../types';
 import { downloadFile, downloadNewEntries, settlePromises, shouldRun } from './utils';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users
 // for content interaction entries.
-export async function fetchInteractions(throttle: Throttle<number>): Promise<number> {
-  // create a client
-  const client = new SkynetClient(SKYNET_PORTAL_URL);
-  
+export async function fetchInteractions(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
   // create a connection with the database and fetch all collections
   const db = await MongoDB.Connection();
   const usersDB = await db.getCollection<IUser>(COLL_USERS);

@@ -24,8 +24,7 @@ export async function downloadNewEntries(
   cachedDataLink: string = "",
   offset: number = 0
 ): Promise<[IContent[], DataLink]> {
-  // TODO: Pass cachedDataLink to SDK
-  const {cached, data: page, dataLink } = await downloadFile<IPage>(client, userPK, path)
+  const {cached, data: page, dataLink } = await downloadFile<IPage>(client, userPK, path, cachedDataLink)
   if (cached || !page) {
     return [[], ""];
   }
@@ -58,8 +57,7 @@ export async function downloadFile<T>(
   path: string,
   cachedDataLink: string = "",
 ): Promise<JSONDownloadResponse<T>> {
-  // TODO: pass cachedDataLink to SDK
-  const response = await client.file.getJSON(userPK, path)
+  const response = await client.file.getJSON(userPK, path, { cachedDataLink })
   if (response && response.dataLink === cachedDataLink) {
     return { data: null, dataLink: cachedDataLink, cached: true}
   }

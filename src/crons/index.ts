@@ -2,7 +2,7 @@ import { Mutex } from 'async-mutex';
 import { CronCommand, CronJob } from 'cron';
 import { Collection } from 'mongodb';
 // tslint:disable-next-line: max-line-length
-import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_USER_PROFILES } from '../consts';
+import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_USER_PROFILES, SKYNET_JWT } from '../consts';
 import { COLL_EVENTS } from '../database/index';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent } from '../types';
@@ -15,6 +15,7 @@ import { fetchSkapps } from './fetch_skapps';
 import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
 import { fetchUserProfiles } from './fetch_user_profiles';
 import { CronHandler, Throttle } from '../types';
+import { SkynetClient } from 'skynet-js';
 
 // tslint:disable-next-line: no-require-imports no-var-requires
 const pThrottle = require('p-throttle');
@@ -30,11 +31,17 @@ export async function init(): Promise<void> {
   const db = await MongoDB.Connection();
   const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
   
+  // create a client
+  const client = new SkynetClient(
+    "https://siasky.net",
+    { customCookie: SKYNET_JWT }
+  );
+
   // create a leaky bucket to limit the amount of requests we send the client
   const throttle = pThrottle({
-    limit: 1,
-    interval: 1_000
-  }); // limit to 1r/s to be on the safe side
+    limit: 300,
+    interval: 60_000
+  });
 
   const fetchUserProfilesMutex = new Mutex();
   startCronJob(
@@ -45,6 +52,7 @@ export async function init(): Promise<void> {
           'fetchUserProfiles',
           fetchUserProfilesMutex,
           fetchUserProfiles,
+          client,
           eventsDB,
           throttle,
         ).catch() // ignore, should have been handled already
@@ -61,6 +69,7 @@ export async function init(): Promise<void> {
           'fetchSkyFeedUsers',
           fetchSkyFeedUsersMutex,
           fetchSkyFeedUsers,
+          client,
           eventsDB,
           throttle,
         ).catch() // ignore, should have been handled already
@@ -77,6 +86,7 @@ export async function init(): Promise<void> {
           'fetchSkapps',
           fetchSkappsMutex,
           fetchSkapps,
+          client,
           eventsDB,
           throttle,
         ).catch() // ignore, should have been handled already
@@ -93,6 +103,7 @@ export async function init(): Promise<void> {
           'fetchPosts',
           fetchPostsMutex,
           fetchPosts,
+          client,
           eventsDB,
           throttle,
           ).catch() // ignore, should have been handled already
@@ -109,6 +120,7 @@ export async function init(): Promise<void> {
           'fetchComments',
           fetchCommentsMutex,
           fetchComments,
+          client,
           eventsDB,
           throttle,
           ).catch() // ignore, should have been handled already
@@ -125,6 +137,7 @@ export async function init(): Promise<void> {
           'fetchNewContent',
           fetchNewContentMutex,
           fetchNewContent,
+          client,
           eventsDB,
           throttle,
           ).catch() // ignore, should have been handled already
@@ -141,6 +154,7 @@ export async function init(): Promise<void> {
           'fetchInteractions',
           fetchInteractionsMutex,
           fetchInteractions,
+          client,
           eventsDB,
           throttle
         ).catch() // ignore, should have been handled already
@@ -153,6 +167,7 @@ async function tryRun(
   context: string,
   mutex: Mutex,
   handler: CronHandler<number>,
+  client: SkynetClient,
   eventsDB: Collection<IEvent>,
   throttle: Throttle<number>,
 ): Promise<void> {
@@ -170,7 +185,7 @@ async function tryRun(
     console.log(`${start.toLocaleString()}: ${context} started`)
 
     // execute
-    const added = await handler(throttle)
+    const added = await handler(client, throttle)
     const end = new Date()
     if (added) {
       console.log(`${end.toLocaleString()}: ${context} ${added} added`)
