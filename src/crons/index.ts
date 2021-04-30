@@ -1,12 +1,13 @@
 import { Mutex } from 'async-mutex';
 import { CronCommand, CronJob } from 'cron';
 import { Collection } from 'mongodb';
+import { SkynetClient } from 'skynet-js';
 // tslint:disable-next-line: max-line-length
 import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_USER_PROFILES, SKYNET_JWT } from '../consts';
 import { COLL_EVENTS } from '../database/index';
 import { MongoDB } from '../database/mongodb';
-import { EventType, IEvent } from '../types';
 import { tryLogEvent } from '../database/utils';
+import { CronHandler, EventType, IEvent, Throttle } from '../types';
 import { fetchComments } from './fetch_comments';
 import { fetchInteractions } from './fetch_interactions';
 import { fetchNewContent } from './fetch_newcontent';
@@ -14,8 +15,6 @@ import { fetchPosts } from './fetch_posts';
 import { fetchSkapps } from './fetch_skapps';
 import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
 import { fetchUserProfiles } from './fetch_user_profiles';
-import { CronHandler, Throttle } from '../types';
-import { SkynetClient } from 'skynet-js';
 
 // tslint:disable-next-line: no-require-imports no-var-requires
 const pThrottle = require('p-throttle');

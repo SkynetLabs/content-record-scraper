@@ -59,7 +59,7 @@ export async function fetchComments(client: SkynetClient, throttle: Throttle<num
   )
 }
 
-async function fetchEntries(
+export async function fetchEntries(
   client: SkynetClient,
   userDB: Collection<IUser>,
   entriesDB: Collection<IContent>,

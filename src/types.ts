@@ -13,7 +13,9 @@ export enum EventType {
   FETCHCOMMENTS_ERROR = 'FETCHCOMMENTS_ERROR',
   FETCHSKYFEEDUSERS_ERROR = 'FETCHSKYFEEDUSERS_ERROR',
   FETCHUSERPROFILES_ERROR = 'FETCHUSERPROFILES_ERROR',
-  FETCHSKAPPS_ERROR = 'FETCHSKAPPS_ERROR'
+  FETCHSKAPPS_ERROR = 'FETCHSKAPPS_ERROR',
+
+  USER_DISCOVERED = 'USER_DISCOVERED'
 }
 
 export enum EntryType {
@@ -104,6 +106,7 @@ export interface IUser {
   skyIDProfile: IUserProfile;
 
   createdAt: Date;
+  discoveredAt?: Date; // will only be set by leaderboard API (insta scrape)
 }
 
 export interface IMySkyUserProfile {

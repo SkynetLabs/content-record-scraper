@@ -46,6 +46,13 @@ export const DISABLE_FETCH_POSTS =
 export const DISABLE_FETCH_COMMENTS =
   process.env.DISABLE_FETCH_COMMENTS || false;
 
+// user discovery will essentially try and immediately scrape a user after he is
+// being discovered, this is enabled by default because it requires a replica
+// set, currently our local and staging environments are not configured as a
+// replica set.
+export const ENABLE_USER_DISCOVERY =
+  process.env.ENABLE_USER_DISCOVERY || false;
+
 // bootstrap db with some users
 export const TEST_USER_PUBKEYS = [
   "f301891b7e41b107beefe91a133d6efa8c7b0dfe0f5e39650c34b8311c365d39", // pj

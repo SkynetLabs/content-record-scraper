@@ -9,7 +9,7 @@ import { MONGO_CONNECTION_STRING, MONGO_DB_NAME } from '../consts';
 
 export class MongoDB {
   private db: Db;
-  private client: MongoClient;
+  public client: MongoClient;
 
   public static async Connection(): Promise<MongoDB> {
     let mongo: MongoDB;

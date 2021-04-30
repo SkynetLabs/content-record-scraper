@@ -48,7 +48,7 @@ export async function fetchUserProfiles(client: SkynetClient, throttle: Throttle
   )
 }
 
-async function fetchProfiles(
+export async function fetchProfiles(
   client: SkynetClient,
   userDB: Collection<IUser>,
   userPK: string,

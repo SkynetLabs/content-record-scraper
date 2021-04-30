@@ -59,7 +59,7 @@ export async function fetchInteractions(client: SkynetClient, throttle: Throttle
   )
 }
 
-async function fetchEntries(
+export async function fetchEntries(
   client: SkynetClient,
   userDB: Collection<IUser>,
   entriesDB: Collection<IContent>,

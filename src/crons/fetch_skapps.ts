@@ -46,17 +46,17 @@ export async function fetchSkapps(client: SkynetClient, throttle: Throttle<numbe
   );
 }
 
-async function fetchNewSkapps(
+export async function fetchNewSkapps(
   client: SkynetClient,
   userDB: Collection<IUser>,
   user: IUser,
 ): Promise<number> {
   // define some variables
-  const { userPK } = user
+  const { userPK, skapps } = user
 
   // map all the skapnames
   const map = {};
-  for (const skapp of user.skapps) {
+  for (const skapp of skapps) {
     map[skapp] = true
   }
   
