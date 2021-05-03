@@ -70,7 +70,7 @@ export async function downloadFile<T>(
     }
   }
 
-  return { data: null, dataLink: null, cached: false}
+  return { data: null, dataLink: "", cached: false}
 }
 
 export async function settlePromises(

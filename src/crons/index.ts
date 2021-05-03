@@ -3,7 +3,7 @@ import { CronCommand, CronJob } from 'cron';
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 // tslint:disable-next-line: max-line-length
-import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_USER_PROFILES, SKYNET_JWT } from '../consts';
+import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_SOCIAL_GRAPH, DISABLE_FETCH_USER_PROFILES, SKYNET_JWT } from '../consts';
 import { COLL_EVENTS } from '../database/index';
 import { MongoDB } from '../database/mongodb';
 import { tryLogEvent } from '../database/utils';
@@ -14,6 +14,7 @@ import { fetchNewContent } from './fetch_newcontent';
 import { fetchPosts } from './fetch_posts';
 import { fetchSkapps } from './fetch_skapps';
 import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
+import { fetchSocialGraph } from './fetch_social_graph';
 import { fetchUserProfiles } from './fetch_user_profiles';
 
 // tslint:disable-next-line: no-require-imports no-var-requires
@@ -68,6 +69,23 @@ export async function init(): Promise<void> {
           'fetchSkyFeedUsers',
           fetchSkyFeedUsersMutex,
           fetchSkyFeedUsers,
+          client,
+          eventsDB,
+          throttle,
+        ).catch() // ignore, should have been handled already
+      }
+    }
+  );
+
+  const fetchSocialGraphMutex = new Mutex();
+  startCronJob(
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
+    () => {
+      if (!DISABLE_FETCH_SOCIAL_GRAPH) {
+        tryRun(
+          'fetchSocialGraph',
+          fetchSocialGraphMutex,
+          fetchSocialGraph,
           client,
           eventsDB,
           throttle,

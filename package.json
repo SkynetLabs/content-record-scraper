@@ -24,7 +24,7 @@
     "dotenv": "^8.2.0",
     "mongodb": "^3.6.6",
     "p-throttle": "^4.1.1",
-    "skynet-js": "^4.0.3-beta"
+    "skynet-js": "^4.0.5-beta"
   },
   "devDependencies": {
     "@types/p-throttle": "^2.1.0",

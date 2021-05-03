@@ -13,6 +13,7 @@ export enum EventType {
   FETCHCOMMENTS_ERROR = 'FETCHCOMMENTS_ERROR',
   FETCHSKYFEEDUSERS_ERROR = 'FETCHSKYFEEDUSERS_ERROR',
   FETCHUSERPROFILES_ERROR = 'FETCHUSERPROFILES_ERROR',
+  FETCHSOCIALGRAPH_ERROR = 'FETCHSOCIALGRAPH_ERROR',
   FETCHSKAPPS_ERROR = 'FETCHSKAPPS_ERROR',
 
   USER_DISCOVERED = 'USER_DISCOVERED'
@@ -81,26 +82,28 @@ export interface IUser {
   newContentCurrPage: NumberInt;
   newContentCurrNumEntries: NumberInt;
   newContentConsecNoneFound: NumberInt;
-  newContentIndexDataLink: string;
-  newContentCurrPageDataLink: string;
+  newContentIndexDataLinks: IDictionary<DataLink>;
+  newContentCurrPageDataLinks: IDictionary<DataLink>;
 
   contentInteractionsCurrPage: NumberInt;
   contentInteractionsNumEntries: NumberInt;
   contentInteractionsConsecNoneFound: NumberInt;
-  contentInteractionsIndexDataLink: string;
-  contentInteractionsCurrPageDataLink: string;
+  contentInteractionsIndexDataLinks: IDictionary<DataLink>;
+  contentInteractionsCurrPageDataLinks: IDictionary<DataLink>;
 
   postsCurrPage: NumberInt;
   postsCurrNumEntries: NumberInt;
   postsConsecNoneFound: NumberInt;
-  postsIndexDataLink: string;
-  postsCurrPageDataLink: string;
+  postsIndexDataLinks: IDictionary<DataLink>;
+  postsCurrPageDataLinks: IDictionary<DataLink>;
 
   commentsCurrPage: NumberInt;
   commentsCurrNumEntries: NumberInt;
   commentsConsecNoneFound: NumberInt;
-  commentsIndexDataLink: string;
-  commentsCurrPageDataLink: string;
+  commentsIndexDataLinks: IDictionary<DataLink>;
+  commentsCurrPageDataLinks: IDictionary<DataLink>;
+
+  followingDataLinks: IDictionary<DataLink>;
 
   mySkyProfile: IMySkyUserProfile;
   skyIDProfile: IUserProfile;
@@ -187,6 +190,15 @@ export interface IPage {
   $schema: string;
   _self: string; // back reference to the path
   items: Post[];
+}
+
+export interface IUserRelations {
+  $schema: string;
+  _self: string; // back reference to the path
+
+  relationType: string;
+
+  relations: { [key: string]: number };
 }
 
 export function isFeedDACPage(page: IPage): boolean {

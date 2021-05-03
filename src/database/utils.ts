@@ -8,30 +8,32 @@ export async function upsertUser(userDB: Collection<IUser>, userPK: string): Pro
       $setOnInsert: {
         userPK,
         skapps: [] as string[],
-        newContentCurrPage : new NumberInt(0),
+        newContentCurrPage: new NumberInt(0),
         newContentCurrNumEntries: new NumberInt(0),
         newContentConsecNoneFound: new NumberInt(0),
-        newContentIndexDataLink: "",
-        newContentCurrPageDataLink: "",
+        newContentIndexDataLinks: {},
+        newContentCurrPageDataLinks: {},
       
         contentInteractionsCurrPage: new NumberInt(0),
         contentInteractionsNumEntries: new NumberInt(0),
         contentInteractionsConsecNoneFound: new NumberInt(0),
-        contentInteractionsIndexDataLink: "",
-        contentInteractionsCurrPageDataLink: "",
+        contentInteractionsIndexDataLinks: {},
+        contentInteractionsCurrPageDataLinks: {},
 
         postsCurrPage: new NumberInt(0),
         postsCurrNumEntries: new NumberInt(0),
         postsConsecNoneFound: new NumberInt(0),
-        postsIndexDataLink: "",
-        postsCurrPageDataLink: "",
+        postsIndexDataLinks: {},
+        postsCurrPageDataLinks: {},
 
         commentsCurrPage: new NumberInt(0),
         commentsCurrNumEntries: new NumberInt(0),
         commentsConsecNoneFound: new NumberInt(0),
-        commentsIndexDataLink: "",
-        commentsCurrPageDataLink: "",
+        commentsIndexDataLinks: {},
+        commentsCurrPageDataLinks: {},
 
+        followingDataLinks: {},
+      
         createdAt: new Date(),
       }
     },

@@ -15,6 +15,9 @@ export const CONTENTRECORD_DAC_DATA_DOMAIN =
 export const FEED_DAC_DATA_DOMAIN =
   process.env.FEED_DAC_DATA_DOMAIN || 'feed-dac.hns'
 
+export const SOCIAL_DAC_DATA_DOMAIN =
+  process.env.SOCIAL_DAC_DATA_DOMAIN || 'social-dac.hns'
+
 export const MYSKY_PROFILE_DAC_DATA_DOMAIN = 
   process.env.MYSKY_PROFILE_DAC_DATA_DOMAIN || 'skyuser.hns'
 
@@ -28,9 +31,9 @@ export const EVENT_EXPIRY_IN_S = 60 * 60 * 24 * 7; // last 7 days
 export const DISABLE_FETCH_USER_PROFILES =
   process.env.DISABLE_FETCH_USER_PROFILES || false;
 
-export const DISABLE_FETCH_SKYFEED_USERS =
-  process.env.DISABLE_FETCH_SKYFEED_USERS || true;
-
+export const DISABLE_FETCH_SOCIAL_GRAPH =
+  process.env.DISABLE_FETCH_SOCIAL_GRAPH || false;
+  
 export const DISABLE_FETCH_SKAPPS =
   process.env.DISABLE_FETCH_SKAPPS || false;
 
@@ -45,6 +48,10 @@ export const DISABLE_FETCH_POSTS =
 
 export const DISABLE_FETCH_COMMENTS =
   process.env.DISABLE_FETCH_COMMENTS || false;
+
+// disabled by default, kind of deprecated by social DAC
+export const DISABLE_FETCH_SKYFEED_USERS =
+  process.env.DISABLE_FETCH_SKYFEED_USERS || true;
 
 // user discovery will essentially try and immediately scrape a user after he is
 // being discovered, this is enabled by default because it requires a replica

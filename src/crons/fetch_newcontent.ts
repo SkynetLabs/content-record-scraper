@@ -78,9 +78,13 @@ export async function fetchEntries(
   const {
     newContentCurrPage: currPage,
     newContentCurrNumEntries: currOffset,
-    newContentIndexDataLink: cachedIndexDataLink,
-    newContentCurrPageDataLink: cachedPageDataLink,
+    newContentIndexDataLinks: cachedIndexDataLinks,
+    newContentCurrPageDataLinks: cachedPageDataLinks,
   } = user;
+
+  // grab the cached data links
+  const cachedIndexDataLink = cachedIndexDataLinks[skapp] || ""
+  const cachedPageDataLink = cachedPageDataLinks[skapp] || ""
 
   // fetch the index
   const {cached, data: index, dataLink: indexDataLink} = await downloadFile<IIndex>(client, userPK, path, cachedIndexDataLink)
@@ -135,14 +139,18 @@ export async function fetchEntries(
     consecNoneFound++
   }
 
+  // update the cached data links
+  cachedIndexDataLinks[skapp] = indexDataLink
+  cachedPageDataLinks[skapp] = currPageDataLink
+
   // update the user state
   await userDB.updateOne({ _id: user._id }, {
     $set: {
       newContentCurrPage: index.currPageNumber,
       newContentCurrNumEntries: index.currPageNumEntries,
       newContentConsecNoneFound: new NumberInt(consecNoneFound),
-      newContentIndexDataLink: indexDataLink,
-      newContentCurrPageDataLink: currPageDataLink,
+      newContentIndexDataLinks: cachedIndexDataLinks,
+      newContentCurrPageDataLinks: cachedPageDataLinks,
     }
   })
   return numEntries
