@@ -67,28 +67,23 @@ export async function fetchNewSkapps(
     SOCIAL_DAC_DATA_DOMAIN
   ]
   for (const domain of dacDataDomains) {
-    try {
-      // download the dictionary
-      const path = `${domain}/skapps.json`
-      const { data: dict } = (await downloadFile<IDictionary<string | boolean>>(
-        client,
-        userPK,
-        path
-        ));
-      console.log(`Downloading skapps file for user '${userPK}', domain ${domain} data: ${dict ? JSON.stringify(dict): null}`)
-      if (!dict) {
-        continue;
+    // download the dictionary
+    const path = `${domain}/skapps.json`
+    const { data: dict } = (await downloadFile<IDictionary<string | boolean>>(
+      client,
+      userPK,
+      path
+      ));
+    if (!dict) {
+      continue;
+    }
+
+    // loop all of the skapps and add the ones we're missing
+    for (const skapp of Object.keys(dict)) {
+      if (!map[skapp]) {
+        added++;
+        user.skapps.push(skapp)
       }
-  
-      // loop all of the skapps and add the ones we're missing
-      for (const skapp of Object.keys(dict)) {
-        if (!map[skapp]) {
-          added++;
-          user.skapps.push(skapp)
-        }
-      }
-    } catch (error) {
-      console.log(error)
     }
   }
 
