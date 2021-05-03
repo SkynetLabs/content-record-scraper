@@ -1,6 +1,6 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CONTENTRECORD_DAC_DATA_DOMAIN, FEED_DAC_DATA_DOMAIN } from '../consts';
+import { CONTENTRECORD_DAC_DATA_DOMAIN, FEED_DAC_DATA_DOMAIN, SOCIAL_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../types';
@@ -61,25 +61,34 @@ export async function fetchNewSkapps(
   }
   
   let added = 0;
-  const dacDataDomains = [CONTENTRECORD_DAC_DATA_DOMAIN, FEED_DAC_DATA_DOMAIN]
+  const dacDataDomains = [
+    CONTENTRECORD_DAC_DATA_DOMAIN,
+    FEED_DAC_DATA_DOMAIN,
+    SOCIAL_DAC_DATA_DOMAIN
+  ]
   for (const domain of dacDataDomains) {
-    // download the dictionary
-    const path = `${domain}/skapps.json`
-    const { data: dict } = (await downloadFile<IDictionary<string | boolean>>(
-      client,
-      userPK,
-      path
-    ));
-    if (!dict) {
-      continue;
-    }
-
-    // loop all of the skapps and add the ones we're missing
-    for (const skapp of Object.keys(dict)) {
-      if (!map[skapp]) {
-        added++;
-        user.skapps.push(skapp)
+    try {
+      // download the dictionary
+      const path = `${domain}/skapps.json`
+      const { data: dict } = (await downloadFile<IDictionary<string | boolean>>(
+        client,
+        userPK,
+        path
+        ));
+      console.log(`Downloading skapps file for user '${userPK}', domain ${domain} data: ${dict ? JSON.stringify(dict): null}`)
+      if (!dict) {
+        continue;
       }
+  
+      // loop all of the skapps and add the ones we're missing
+      for (const skapp of Object.keys(dict)) {
+        if (!map[skapp]) {
+          added++;
+          user.skapps.push(skapp)
+        }
+      }
+    } catch (error) {
+      console.log(error)
     }
   }
 

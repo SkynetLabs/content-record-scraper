@@ -84,10 +84,10 @@ export async function fetchFollowing(
   skapp: string
 ): Promise<number> {
   let added = 0;
-
+  
   // grab some variables
   const { userPK, followingDataLinks } = user;
-
+  
   // fetch following
   const cachedDataLink = followingDataLinks[skapp] || ""
   const path = `${SOCIAL_DAC_DATA_DOMAIN}/${skapp}/${DATAKEY_FOLLOWING}.json`;
@@ -99,9 +99,13 @@ export async function fetchFollowing(
   )
 
   // update the datalink on the user if it's a new one
-  if (dataLink !== cachedDataLink) {
+  if (dataLink && dataLink !== cachedDataLink) {
     followingDataLinks[skapp] = dataLink;
     await userDB.updateOne({ userPK }, {$set: { followingDataLinks }})
+  }
+
+  if (!data) {
+    return 0;
   }
 
   // find all new users and insert a user object into the database
