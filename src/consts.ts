@@ -73,6 +73,7 @@ export const TEST_USER_PUBKEYS = [
   "d448f1562c20dbafa42badd9f88560cd1adb2f177b30f0aa048cb243e55d37bd", // redsolv
   "611f0e3730c028d618362aaaa19b00aa50bdf31480c627baf006abcc88f1c97a", // redsolv
   "a79dacfd8d58c701eb3572eb417ee524795cc0231a646f93abdb8f5f1a2048cc", // stelb
+  "89e5147864297b80f5ddf29711ba8c093e724213b0dcbefbc3860cc6d598cc35", // dghelm
 ]
 
 export const SKYNET_JWT = process.env.SKYNET_JWT;

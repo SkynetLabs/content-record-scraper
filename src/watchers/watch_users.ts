@@ -2,7 +2,7 @@ import { SkynetClient } from "skynet-js";
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from "../database";
 import { MongoDB } from "../database/mongodb";
 import { IEvent, IUser, IContent, EventType } from '../types';
-import { SKYNET_JWT } from '../consts';
+import { SKYNET_JWT, SKYNET_PORTAL_URL } from '../consts';
 import { fetchEntries as fetchNewContent } from "../crons/fetch_newcontent";
 import { fetchEntries as fetchInteractions } from "../crons/fetch_interactions";
 import { fetchEntries as fetchPosts } from "../crons/fetch_posts";
@@ -16,7 +16,7 @@ import { fetchProfiles } from "../crons/fetch_user_profiles";
 export async function watchUsers(): Promise<void> {
   // create a client
   const client = new SkynetClient(
-    "https://siasky.net",
+    SKYNET_PORTAL_URL,
     { customCookie: SKYNET_JWT }
   );
 

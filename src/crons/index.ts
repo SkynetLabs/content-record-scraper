@@ -3,7 +3,7 @@ import { CronCommand, CronJob } from 'cron';
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 // tslint:disable-next-line: max-line-length
-import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_SOCIAL_GRAPH, DISABLE_FETCH_USER_PROFILES, SKYNET_JWT } from '../consts';
+import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_SOCIAL_GRAPH, DISABLE_FETCH_USER_PROFILES, SKYNET_JWT, SKYNET_PORTAL_URL } from '../consts';
 import { COLL_EVENTS } from '../database/index';
 import { MongoDB } from '../database/mongodb';
 import { tryLogEvent } from '../database/utils';
@@ -30,12 +30,15 @@ export async function init(): Promise<void> {
   // create a connection with the database and fetch the users DB
   const db = await MongoDB.Connection();
   const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
-  
+
   // create a client
   const client = new SkynetClient(
-    "https://siasky.net",
+    SKYNET_PORTAL_URL,
     { customCookie: SKYNET_JWT }
   );
+  if (SKYNET_JWT) {
+    console.log(`${new Date().toLocaleString()}: Initialized client using custom JWT: ${SKYNET_JWT ? 'yes': 'no'}`);
+  }
 
   // create a leaky bucket to limit the amount of requests we send the client
   const throttle = pThrottle({
