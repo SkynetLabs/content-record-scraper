@@ -34,7 +34,7 @@ export async function fetchUserProfiles(database: MongoDB, client: SkynetClient,
     // process the error when all promises were settled
     //
     // tslint:disable-next-line: no-empty
-    promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
+    promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.status, err.message) }})
     promises.push(promise)
   }
 

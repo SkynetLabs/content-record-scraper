@@ -37,7 +37,7 @@ export async function fetchComments(database: MongoDB, client: SkynetClient, thr
       // process the error when all promises were settled
       //
       // tslint:disable-next-line: no-empty
-      promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
+      promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.status, err.message) }})
       promises.push(promise)
     }
   }
@@ -80,11 +80,8 @@ export async function fetchEntries(
     path,
     cachedDataLinks[path]
   )
-  if (cached) {
-    return 0; // no changes since last download
-  }
-  if (!index) {
-    throw new Error(`No comments index file found for user ${userPK}`)
+  if (!index || cached) {
+    return 0; // no file found or no changes since last download
   }
   const { currPageNumber, currPageNumEntries } = index;
 
