@@ -1,5 +1,6 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
+import { DEBUG_ENABLED } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { upsertUser } from '../database/utils';
@@ -58,7 +59,7 @@ export async function fetchSkyFeedUsers(database: MongoDB, client: SkynetClient,
     // process the error when all promises were settled
     //
     // tslint:disable-next-line: no-empty
-    promise.catch(() => {})
+    promise.catch((error) => { if (DEBUG_ENABLED) { console.log(error) }})
     promises.push(promise)
   }
 

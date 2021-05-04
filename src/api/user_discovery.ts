@@ -28,14 +28,14 @@ export async function handler(
     res.status(400).json({ error: "parameter 'userPK' should be a string" });
     return
   }
-
+  
   // fetch 'scrape' param from request
   const scrape = Boolean(req.query.scrape) || false
 
-  console.log('upserting user')
+  console.log(`${new Date().toLocaleString()}: user discovery request received for user ${userPK}, scrape ${scrape}\n\n`);
+
   // upsert the user and log a discovery event in case it was an unknown user
   const discovered = await upsertUser(usersDB, userPK)
-  console.log('discovered', discovered)
   if (discovered) {
     try {
       await eventsDB.insertOne({
@@ -55,7 +55,6 @@ export async function handler(
     res.status(202).json({ scraped: false, discovered: false });
     return
   }
-  console.log('fetching user')
 
   // fetch the user
   let user: IUser;
@@ -68,14 +67,10 @@ export async function handler(
 
   try {
     // fetch the user's profiles
-    console.log('fetching profiles')
     await fetchProfiles(client, usersDB, user)
-    console.log('fetched profiles')
 
     // fetch the user's skapps
-    console.log('fetching skapps')
     await fetchNewSkapps(client, usersDB, user)
-    console.log('fetched skapps')
 
     // refetch the user to get skapp list
     user = await usersDB.findOne({ userPK })
@@ -83,7 +78,6 @@ export async function handler(
       res.status(404).json({ error: `user not found` });
       return
     }
-    console.log(user)
 
     // now loop all skapps and fire a scrape event
     for (const skapp of user.skapps) {

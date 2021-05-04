@@ -1,6 +1,6 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CONTENTRECORD_DAC_DATA_DOMAIN, FEED_DAC_DATA_DOMAIN, SOCIAL_DAC_DATA_DOMAIN } from '../consts';
+import { CONTENTRECORD_DAC_DATA_DOMAIN, DEBUG_ENABLED, FEED_DAC_DATA_DOMAIN, SOCIAL_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IUser } from '../types';
@@ -32,7 +32,7 @@ export async function fetchSkapps(database: MongoDB, client: SkynetClient, throt
     // process the error when all promises were settled
     //
     // tslint:disable-next-line: no-empty
-    promise.catch(() => {})
+    promise.catch((error) => { if (DEBUG_ENABLED) { console.log(error) }})
     promises.push(promise)
   }
 

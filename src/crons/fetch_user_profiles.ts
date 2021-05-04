@@ -1,6 +1,6 @@
 import { Collection } from 'mongodb';
 import { SignedRegistryEntry, SkynetClient } from 'skynet-js';
-import { MYSKY_PROFILE_DAC_DATA_DOMAIN } from '../consts';
+import { DEBUG_ENABLED, MYSKY_PROFILE_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { EventType, IEvent, IMySkyUserProfile, IUser, IUserProfile, Throttle } from '../types';
@@ -34,7 +34,7 @@ export async function fetchUserProfiles(database: MongoDB, client: SkynetClient,
     // process the error when all promises were settled
     //
     // tslint:disable-next-line: no-empty
-    promise.catch(() => {})
+    promise.catch((error) => { if (DEBUG_ENABLED) { console.log(error) }})
     promises.push(promise)
   }
 

@@ -1,6 +1,6 @@
 import { BulkWriteOperation, Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { FEED_DAC_DATA_DOMAIN } from '../consts';
+import { DEBUG_ENABLED, FEED_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { DataLink, EntryType, EventType, IContent, IEvent, IIndex, IUser, Throttle } from '../types';
@@ -37,7 +37,7 @@ export async function fetchComments(database: MongoDB, client: SkynetClient, thr
       // process the error when all promises were settled
       //
       // tslint:disable-next-line: no-empty
-      promise.catch(() => {})
+      promise.catch((error) => { if (DEBUG_ENABLED) { console.log(error) }})
       promises.push(promise)
     }
   }

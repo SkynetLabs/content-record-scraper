@@ -1,6 +1,6 @@
 import { BulkWriteOperation, Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
-import { CONTENTRECORD_DAC_DATA_DOMAIN } from '../consts';
+import { CONTENTRECORD_DAC_DATA_DOMAIN, DEBUG_ENABLED } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { DataLink, EntryType, EventType, IContent, IEvent, IIndex, IUser, Throttle } from '../types';
@@ -37,7 +37,7 @@ export async function fetchNewContent(database: MongoDB, client: SkynetClient, t
       // process the error when all promises were settled
       //
       // tslint:disable-next-line: no-empty
-      promise.catch(() => {})
+      promise.catch((error) => { if (DEBUG_ENABLED) { console.log(error) }})
       promises.push(promise)
     }
   }
