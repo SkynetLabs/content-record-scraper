@@ -33,7 +33,7 @@ export async function init(client: SkynetClient): Promise<void> {
 
   // create a leaky bucket to limit the amount of requests we send the client
   const throttle = pThrottle({
-    limit: 300,
+    limit: 100,
     interval: 60_000
   });
 
