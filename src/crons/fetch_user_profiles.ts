@@ -85,6 +85,9 @@ export async function fetchProfiles(
         }
       }
     )
+    if (DEBUG_ENABLED) {
+      console.log(`Found profile for user ${userPK} ${JSON.stringify(mySkyProfile)}`)
+    }
     found += modifiedCount
   }
 
