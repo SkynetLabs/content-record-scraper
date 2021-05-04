@@ -34,7 +34,7 @@ export async function fetchUserProfiles(database: MongoDB, client: SkynetClient,
     // process the error when all promises were settled
     //
     // tslint:disable-next-line: no-empty
-    promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.status, err.message) }})
+    promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
     promises.push(promise)
   }
 
@@ -85,9 +85,8 @@ export async function fetchProfiles(
         }
       }
     )
-    // if (DEBUG_ENABLED) {
-      console.log(`Found profile for user ${userPK} ${JSON.stringify(mySkyProfile)}`)
-    // }
+    const profileStr = JSON.stringify(mySkyProfile)
+    console.log(`Found profile for user '${userPK}' ${profileStr}`)
     found += modifiedCount
   }
 

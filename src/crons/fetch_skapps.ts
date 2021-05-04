@@ -32,7 +32,7 @@ export async function fetchSkapps(database: MongoDB, client: SkynetClient, throt
     // process the error when all promises were settled
     //
     // tslint:disable-next-line: no-empty
-    promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.status, err.message) }})
+    promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
     promises.push(promise)
   }
 
