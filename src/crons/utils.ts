@@ -35,14 +35,29 @@ export async function downloadNewEntries(
 
   const entries = [];
   for (const item of pageItems) {
-    entries.push(pageItemToEntry(
+    const entry = pageItemToEntry(
       dacDataDomain,
       entryType,
       userPK,
       skapp,
       item,
       page._self
-    ))
+    )
+
+    if (entryType === EntryType.NEWCONTENT && entry.skylink) {
+      try {
+        entry.metadata = entry.metadata || {}
+        const skylinkMetadata = await client.getMetadata(entry.skylink)
+        entry.metadata = {
+          ...entry.metadata,
+          skylinkMetadata
+        }
+      } catch (error) {
+        // do nothing
+      }
+    }
+
+    entries.push(entry)
   }
 
   return [
