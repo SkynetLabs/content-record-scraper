@@ -1,8 +1,8 @@
+import { SkynetClient } from 'skynet-js';
 import { init as initAPI } from './api';
+import { SCRAPERAPI_PORT, SKYNET_JWT, SKYNET_PORTAL_URL } from './consts';
 import { init as initCrons } from './crons';
 import { init as initDB } from './database';
-import { SkynetClient } from 'skynet-js';
-import { SKYNET_JWT, SKYNET_PORTAL_URL, SCRAPERAPI_PORT } from './consts';
 import { MongoDB } from './database/mongodb';
 
 // tslint:disable-next-line: no-floating-promises
