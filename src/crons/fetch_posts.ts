@@ -37,7 +37,7 @@ export async function fetchPosts(database: MongoDB, client: SkynetClient, thrott
       // process the error when all promises were settled
       //
       // tslint:disable-next-line: no-empty
-      promise.catch((error) => { if (DEBUG_ENABLED) { console.log(error) }})
+      promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
       promises.push(promise)
     }
   }
