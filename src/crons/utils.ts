@@ -88,14 +88,14 @@ export async function settlePromises(
     if (result.status === "fulfilled") {
       added += result.value;
     } else if (result.reason) {
-      if (typeof result.reason === 'object' && !Object.keys(result.reason).length) {
-        continue // TODO: investigate?
+      let error = result.reason
+      if (typeof result.reason === 'object') {
+        error = new Error(result.reason).message;
       }
-
       await tryLogEvent(eventsDB, {
           context,
           type: eventsOnErrorType,
-          error: result.reason,
+          error,
           createdAt: new Date(),
       })
       if (DEBUG_ENABLED) {
