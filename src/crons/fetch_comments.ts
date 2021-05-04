@@ -15,7 +15,7 @@ export async function fetchComments(database: MongoDB, client: SkynetClient, thr
   const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch a user cursor
-  const userCursor = usersDB.find();
+  const userCursor = usersDB.find().sort({$natural: -1});
 
   // loop every user fetch new comments for all his skapps
   // NOTE: the skapp list is updated by another cron

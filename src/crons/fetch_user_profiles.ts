@@ -17,7 +17,7 @@ export async function fetchUserProfiles(database: MongoDB, client: SkynetClient,
   const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch a user cursor
-  const userCursor = usersDB.find();
+  const userCursor = usersDB.find().sort({$natural: -1});
 
   // loop every user and kickstart an indexation
   const promises = [];

@@ -40,7 +40,7 @@ export async function fetchSocialGraph(database: MongoDB, client: SkynetClient, 
   }
 
   // fetch a user cursor
-  const userCursor = usersDB.find();
+  const userCursor = usersDB.find().sort({$natural: -1});
 
   // loop every user and kickstart an indexation
   const promises = [];

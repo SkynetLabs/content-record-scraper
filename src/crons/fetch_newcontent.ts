@@ -15,7 +15,7 @@ export async function fetchNewContent(database: MongoDB, client: SkynetClient, t
   const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch a user cursor
-  const userCursor = usersDB.find();
+  const userCursor = usersDB.find().sort({$natural: -1});
 
   // loop every user fetch new interactions for all his skapps
   // NOTE: the skapp list is updated by another cron
