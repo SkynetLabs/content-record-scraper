@@ -132,7 +132,7 @@ export function pageItemToEntry(
 ): IContent | null {
   // invalid page item
   const isValidPageItem =
-    item.hasOwnProperty('id') && (item as Post).id ||
+    item.hasOwnProperty('id') && (item as Post).id !== undefined ||
     item.hasOwnProperty('skylink') && sanitizeSkylink((item as IRawEntry).skylink)
 
   if (!isValidPageItem) {
