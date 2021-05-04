@@ -44,7 +44,7 @@ export async function downloadNewEntries(
       page._self
     )
 
-    if (entryType === EntryType.NEWCONTENT && entry.skylink) {
+    if (entry && entryType === EntryType.NEWCONTENT && entry.skylink) {
       try {
         entry.metadata = entry.metadata || {}
         const skylinkMetadata = await client.getMetadata(entry.skylink)

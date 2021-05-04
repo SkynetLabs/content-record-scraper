@@ -22,7 +22,6 @@ export async function fetchPosts(database: MongoDB, client: SkynetClient, thrott
   const promises = [];
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
-
     for (const skapp of user.skapps) {
       const promise = throttle(fetchEntries.bind(
         null,
