@@ -24,7 +24,7 @@ export const SOCIAL_DAC_DATA_DOMAIN =
   process.env.SOCIAL_DAC_DATA_DOMAIN || 'social-dac.hns'
 
 export const MYSKY_PROFILE_DAC_DATA_DOMAIN = 
-  process.env.MYSKY_PROFILE_DAC_DATA_DOMAIN || 'skyuser.hns'
+  process.env.MYSKY_PROFILE_DAC_DATA_DOMAIN || 'profile-dac.hns'
 
 export const SKYNET_PORTAL_URL = 'https://siasky.net'
 
