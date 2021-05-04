@@ -6,16 +6,19 @@ import { upsertUser } from '../database/utils';
 import { EventType, IDictionary, IEvent, IUser, Throttle } from '../types';
 import { settlePromises } from './utils';
 
+////////////////////////////////////////////////
+// DEPRECATED IN FAVOR OF THE SOCIAL DAC
+////////////////////////////////////////////////
+
 const DATAKEY_FOLLOWING = "skyfeed-following"
 const DATAKEY_FOLLOWERS = "skyfeed-followers"
 
 // fetchSkyFeedUsers is a simple scraping algorithm that scrapes all known users
 // from skyfeed.
-export async function fetchSkyFeedUsers(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
-  // create a connection with the database and fetch the users DB
-  const db = await MongoDB.Connection();
-  const userDB = await db.getCollection<IUser>(COLL_USERS);
-  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+export async function fetchSkyFeedUsers(database: MongoDB, client: SkynetClient, throttle: Throttle<number>): Promise<number> {
+  // fetch all collections
+  const userDB = await database.getCollection<IUser>(COLL_USERS);
+  const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch all known user pubkeys
   const usersResult = await userDB.aggregate<{users: string[]}>([

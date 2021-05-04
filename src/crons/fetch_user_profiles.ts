@@ -11,11 +11,10 @@ const DATAKEY_SKYID_PROFILE = "profile"
 
 // fetchUserProfiles is a simple scraping algorithm that scrapes user
 // profiles for all users.
-export async function fetchUserProfiles(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
-  // create a connection with the database and fetch the users DB
-  const db = await MongoDB.Connection();
-  const usersDB = await db.getCollection<IUser>(COLL_USERS);
-  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+export async function fetchUserProfiles(database: MongoDB, client: SkynetClient, throttle: Throttle<number>): Promise<number> {
+  // fetch all collections
+  const usersDB = await database.getCollection<IUser>(COLL_USERS);
+  const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch a user cursor
   const userCursor = usersDB.find();
@@ -28,7 +27,7 @@ export async function fetchUserProfiles(client: SkynetClient, throttle: Throttle
       null,
       client,
       usersDB,
-      user.userPK,
+      user,
     ))()
 
     // catch unhandled promise rejections but don't handle the error, we'll
@@ -51,22 +50,40 @@ export async function fetchUserProfiles(client: SkynetClient, throttle: Throttle
 export async function fetchProfiles(
   client: SkynetClient,
   userDB: Collection<IUser>,
-  userPK: string,
+  user: IUser,
 ): Promise<number> {
   let found = 0;
+
+  // grab some info from the user object
+  const {
+    userPK,
+    cachedDataLinks,
+  } = user;
+
   // fetch MySky profile
   const path = `${MYSKY_PROFILE_DAC_DATA_DOMAIN}/${DATAKEY_MYSKY_PROFILE}.json`;
-  const { data: mySkyProfile } = await downloadFile<IMySkyUserProfile>(
+  const { cached, data: mySkyProfile, dataLink } = await downloadFile<IMySkyUserProfile>(
     client,
     userPK,
-    path
+    path,
+    cachedDataLinks[path]
   )
 
   // if found, persist it
-  if (mySkyProfile) {
+  if (!cached && mySkyProfile) {
+    cachedDataLinks[path] = dataLink
+    user = await userDB.findOne({ userPK })
     const { modifiedCount } = await userDB.updateOne(
       { userPK },
-      { $set: { mySkyProfile } }
+      {
+        $set: {
+          mySkyProfile,
+          cachedDataLinks: {
+            ...user.cachedDataLinks,
+            ...cachedDataLinks,
+          },
+        }
+      }
     )
     found += modifiedCount
   }

@@ -3,6 +3,8 @@ import { ObjectId } from "mongodb";
 import { Int32 as NumberInt } from 'mongodb'
 import { Post } from "./skystandards";
 import { SkynetClient } from 'skynet-js';
+import { MongoDB } from './database/mongodb';
+
 export enum EventType {
   ITERATION_SUCCESS = 'ITERATION_SUCCESS',
   ITERATION_FAILURE = 'ITERATION_FAILURE',
@@ -81,29 +83,17 @@ export interface IUser {
 
   newContentCurrPage: NumberInt;
   newContentCurrNumEntries: NumberInt;
-  newContentConsecNoneFound: NumberInt;
-  newContentIndexDataLinks: IDictionary<DataLink>;
-  newContentCurrPageDataLinks: IDictionary<DataLink>;
 
   contentInteractionsCurrPage: NumberInt;
   contentInteractionsNumEntries: NumberInt;
-  contentInteractionsConsecNoneFound: NumberInt;
-  contentInteractionsIndexDataLinks: IDictionary<DataLink>;
-  contentInteractionsCurrPageDataLinks: IDictionary<DataLink>;
 
   postsCurrPage: NumberInt;
   postsCurrNumEntries: NumberInt;
-  postsConsecNoneFound: NumberInt;
-  postsIndexDataLinks: IDictionary<DataLink>;
-  postsCurrPageDataLinks: IDictionary<DataLink>;
 
   commentsCurrPage: NumberInt;
   commentsCurrNumEntries: NumberInt;
-  commentsConsecNoneFound: NumberInt;
-  commentsIndexDataLinks: IDictionary<DataLink>;
-  commentsCurrPageDataLinks: IDictionary<DataLink>;
 
-  followingDataLinks: IDictionary<DataLink>;
+  cachedDataLinks: IDictionary<DataLink>;
 
   mySkyProfile: IMySkyUserProfile;
   skyIDProfile: IUserProfile;
@@ -213,7 +203,11 @@ export interface IRawEntry {
 
 export type Throttle<T> = (fn: Function) => () => Promise<T>
 
-export type CronHandler<T> = (client: SkynetClient, throttle: Throttle<T>) => Promise<T>
+export type CronHandler<T> = (
+  database: MongoDB,
+  client: SkynetClient,
+  throttle: Throttle<T>
+) => Promise<T>
 
 export type JSONDownloadResponse<T> = {
   data: T | null;

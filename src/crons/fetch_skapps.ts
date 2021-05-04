@@ -9,11 +9,10 @@ import { downloadFile, settlePromises } from './utils';
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
-export async function fetchSkapps(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
-  // create a connection with the database and fetch all collections
-  const db = await MongoDB.Connection();
-  const usersDB = await db.getCollection<IUser>(COLL_USERS);
-  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+export async function fetchSkapps(database: MongoDB, client: SkynetClient, throttle: Throttle<number>): Promise<number> {
+  // fetch all collections
+  const usersDB = await database.getCollection<IUser>(COLL_USERS);
+  const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
   
   // fetch a user cursor
   const userCursor = usersDB.find();
@@ -52,7 +51,11 @@ export async function fetchNewSkapps(
   user: IUser,
 ): Promise<number> {
   // define some variables
-  const { userPK, skapps } = user
+  const {
+    userPK,
+    skapps,
+    cachedDataLinks
+  } = user
 
   // map all the skapnames
   const map = {};
@@ -69,27 +72,44 @@ export async function fetchNewSkapps(
   for (const domain of dacDataDomains) {
     // download the dictionary
     const path = `${domain}/skapps.json`
-    const { data: dict } = (await downloadFile<IDictionary<string | boolean>>(
+    const { data: dict, cached, dataLink } = (await downloadFile<IDictionary<string | boolean>>(
       client,
       userPK,
-      path
+      path,
+      cachedDataLinks[path]
       ));
-    if (!dict) {
+    if (cached || !dict) {
       continue;
     }
+
+    // update the cached data link    
+    cachedDataLinks[path] = dataLink;
 
     // loop all of the skapps and add the ones we're missing
     for (const skapp of Object.keys(dict)) {
       if (!map[skapp]) {
         added++;
-        user.skapps.push(skapp)
+        skapps.push(skapp)
       }
     }
   }
 
   // update the user object if skapps were added
   if (added) {
-    await userDB.updateOne({ _id: user._id }, { $set: { skapps: user.skapps } })
+    // refetch so we don't overwrite cached links
+    user = await userDB.findOne({ userPK })
+    await userDB.updateOne(
+      { userPK },
+      {
+        $set: {
+          skapps,
+          cachedDataLinks: {
+            ...user.cachedDataLinks,
+            ...cachedDataLinks,
+          },
+        }
+      }
+    )
   }
   
   return added;

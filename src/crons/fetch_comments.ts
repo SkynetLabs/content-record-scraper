@@ -1,19 +1,18 @@
-import { BulkWriteOperation, Collection, Int32 as NumberInt } from 'mongodb';
+import { BulkWriteOperation, Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { FEED_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { DataLink, EntryType, EventType, IContent, IEvent, IIndex, IUser, Throttle } from '../types';
-import { downloadFile, downloadNewEntries, settlePromises, shouldRun } from './utils';
+import { downloadFile, downloadNewEntries, settlePromises } from './utils';
 
 // fetchComments is a simple scraping algorithm that scrapes all known users
 // for new comments from the Feed DAC
-export async function fetchComments(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
-  // create a connection with the database and fetch all collections
-  const db = await MongoDB.Connection();
-  const usersDB = await db.getCollection<IUser>(COLL_USERS);
-  const entriesDB = await db.getCollection<IContent>(COLL_ENTRIES);
-  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+export async function fetchComments(database: MongoDB, client: SkynetClient, throttle: Throttle<number>): Promise<number> {
+  // fetch all collections
+  const usersDB = await database.getCollection<IUser>(COLL_USERS);
+  const entriesDB = await database.getCollection<IContent>(COLL_ENTRIES);
+  const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch a user cursor
   const userCursor = usersDB.find();
@@ -23,13 +22,6 @@ export async function fetchComments(client: SkynetClient, throttle: Throttle<num
   const promises = [];
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
-    const { commentsConsecNoneFound } = user;
-
-    // skip this user a certain pct of the times if he has been inactive
-    const consecNoneFound = Number(commentsConsecNoneFound || 0);
-    if (!shouldRun(consecNoneFound)) {
-      continue;
-    }
 
     for (const skapp of user.skapps) {
       const promise = throttle(fetchEntries.bind(
@@ -53,7 +45,7 @@ export async function fetchComments(client: SkynetClient, throttle: Throttle<num
   // wait for all promises to be settled
   return await settlePromises(
     eventsDB,
-    EventType.FETCHPOSTS_ERROR,
+    EventType.FETCHCOMMENTS_ERROR,
     promises,
     'fetchComments' // context for console.log
   )
@@ -69,89 +61,98 @@ export async function fetchEntries(
   let entries: IContent[];
   let operations: BulkWriteOperation<IContent>[] = [];
 
-  // define some variables
-  const domain = FEED_DAC_DATA_DOMAIN;
-  const path =`${domain}/${skapp}/posts/index.json`
-  const { userPK, commentsConsecNoneFound } = user
-
   // grab some info from the user object
   const {
+    userPK,
     commentsCurrPage: currPage,
     commentsCurrNumEntries: currOffset,
-    commentsIndexDataLinks: cachedIndexDataLinks,
-    commentsCurrPageDataLinks: cachedPageDataLinks,
+    cachedDataLinks,
   } = user;
-
-  // grab the cached data links
-  const cachedIndexDataLink = cachedIndexDataLinks[skapp] || ""
-  const cachedPageDataLink = cachedPageDataLinks[skapp] || ""
+  
+  // build the index path
+  const domain = FEED_DAC_DATA_DOMAIN;
+  let path = `${domain}/${skapp}/comments/index.json`
 
   // fetch the index
-  const {cached, data: index, dataLink: indexDataLink} = await downloadFile<IIndex>(client, userPK, path, cachedIndexDataLink)
+  const { cached, data: index, dataLink } = await downloadFile<IIndex>(
+    client,
+    userPK,
+    path,
+    cachedDataLinks[path]
+  )
   if (cached) {
     return 0; // no changes since last download
   }
   if (!index) {
     throw new Error(`No comments index file found for user ${userPK}`)
   }
+  const { currPageNumber, currPageNumEntries } = index;
+
+  // update the cached data link for the index page
+  cachedDataLinks[path] = dataLink;
 
   // download pages up until curr page
-  for (let p = Number(currPage); p < index.currPageNumber; p++) {
+  for (let p = Number(currPage); p < currPageNumber; p++) {
+    // build the page path
+    path = `${domain}/${skapp}/comments/page_${p}.json`;
+
     [entries,] = await downloadNewEntries(
-      domain,
+      FEED_DAC_DATA_DOMAIN,
       EntryType.COMMENT,
       client,
       userPK,
       skapp,
-      `${domain}/${skapp}/comments/page_${p}.json`,
-      cachedPageDataLink
+      path,
+      cachedDataLinks[path]
     )
     for (const entry of entries) {
       operations.push({ insertOne: { document: entry }})
     }
   }
 
+  // build the current page path
+  path = `${domain}/${skapp}/comments/page_${currPageNumber}.json`;
+
   // download entries up until curr offset
   let currPageDataLink: DataLink;
   [entries, currPageDataLink] = await downloadNewEntries(
-    domain,
+    FEED_DAC_DATA_DOMAIN,
     EntryType.COMMENT,
     client,
     userPK,
     skapp,
-    `${domain}/${skapp}/comments/page_${index.currPageNumber}.json`,
-    cachedPageDataLink,
+    path,
+    cachedDataLinks[path],
     Number(currOffset)
   )
   for (const entry of entries) {
     operations.push({ insertOne: { document: entry }})
   }
 
-  // possibly increment consecutive none found
-  let consecNoneFound = Number(commentsConsecNoneFound || 0);
+  // update the cached data link for the current page
+  cachedDataLinks[path] = currPageDataLink;
 
   // insert entries
   const numEntries = operations.length
   if (numEntries) {
-    consecNoneFound = 0
     await entriesDB.bulkWrite(operations)
-  } else {
-    consecNoneFound++
   }
 
-  // update the cached data links
-  cachedIndexDataLinks[skapp] = indexDataLink
-  cachedPageDataLinks[skapp] = currPageDataLink
-
-  // update the user state
-  await userDB.updateOne({ _id: user._id }, {
-    $set: {
-      commentsCurrPage: index.currPageNumber,
-      commentsCurrNumEntries: index.currPageNumEntries,
-      commentsConsecNoneFound: new NumberInt(consecNoneFound),
-      commentsIndexDataLinks: cachedIndexDataLinks,
-      commentsCurrPageDataLinks: cachedPageDataLinks,
+  // update the user state, refetch so we don't overwrite cached links
+  user = await userDB.findOne({ userPK })
+  await userDB.updateOne(
+    { userPK },
+    {
+      $set: {
+        commentsCurrPage: currPageNumber,
+        commentsCurrNumEntries: currPageNumEntries,
+        cachedDataLinks: {
+          ...user.cachedDataLinks,
+          ...cachedDataLinks,
+        },
+      }
     }
-  })
+  )
+
   return numEntries
 }

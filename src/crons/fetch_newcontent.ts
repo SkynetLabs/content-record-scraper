@@ -1,19 +1,18 @@
-import { BulkWriteOperation, Collection, Int32 as NumberInt } from 'mongodb';
+import { BulkWriteOperation, Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { CONTENTRECORD_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { DataLink, EntryType, EventType, IContent, IEvent, IIndex, IUser, Throttle } from '../types';
-import { downloadFile, downloadNewEntries, settlePromises, shouldRun } from './utils';
+import { downloadFile, downloadNewEntries, settlePromises } from './utils';
 
 // fetchNewContent is a simple scraping algorithm that scrapes all known users
 // for new content entries.
-export async function fetchNewContent(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
-  // create a connection with the database and fetch all collections
-  const db = await MongoDB.Connection();
-  const usersDB = await db.getCollection<IUser>(COLL_USERS);
-  const entriesDB = await db.getCollection<IContent>(COLL_ENTRIES);
-  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+export async function fetchNewContent(database: MongoDB, client: SkynetClient, throttle: Throttle<number>): Promise<number> {
+  // fetch all collections
+  const usersDB = await database.getCollection<IUser>(COLL_USERS);
+  const entriesDB = await database.getCollection<IContent>(COLL_ENTRIES);
+  const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch a user cursor
   const userCursor = usersDB.find();
@@ -23,13 +22,6 @@ export async function fetchNewContent(client: SkynetClient, throttle: Throttle<n
   const promises = [];
   while (await userCursor.hasNext()) {
     const user = await userCursor.next();
-    const { newContentConsecNoneFound } = user;
-
-    // skip this user a certain pct of the times if he has been inactive
-    const consecNoneFound = Number(newContentConsecNoneFound || 0);
-    if (!shouldRun(consecNoneFound)) {
-      continue;
-    }
 
     for (const skapp of user.skapps) {
       const promise = throttle(fetchEntries.bind(
@@ -69,89 +61,97 @@ export async function fetchEntries(
   let entries: IContent[];
   let operations: BulkWriteOperation<IContent>[] = [];
 
-  // define some variables
-  const domain = CONTENTRECORD_DAC_DATA_DOMAIN;
-  const path =`${domain}/${skapp}/newcontent/index.json`
-  const { userPK, newContentConsecNoneFound } = user
-
   // grab some info from the user object
   const {
+    userPK,
     newContentCurrPage: currPage,
     newContentCurrNumEntries: currOffset,
-    newContentIndexDataLinks: cachedIndexDataLinks,
-    newContentCurrPageDataLinks: cachedPageDataLinks,
+    cachedDataLinks,
   } = user;
 
-  // grab the cached data links
-  const cachedIndexDataLink = cachedIndexDataLinks[skapp] || ""
-  const cachedPageDataLink = cachedPageDataLinks[skapp] || ""
+  // build the index path
+  const domain = CONTENTRECORD_DAC_DATA_DOMAIN;
+  let path =`${domain}/${skapp}/newcontent/index.json`
 
   // fetch the index
-  const {cached, data: index, dataLink: indexDataLink} = await downloadFile<IIndex>(client, userPK, path, cachedIndexDataLink)
+  const { cached, data: index, dataLink } = await downloadFile<IIndex>(
+    client,
+    userPK,
+    path,
+    cachedDataLinks[path]
+  )
   if (cached) {
     return 0; // no changes since last download
   }
   if (!index) {
     throw new Error(`No new content index file found for user ${userPK}`)
   }
+  const { currPageNumber, currPageNumEntries } = index;
+
+  // update the cached data link for the index page
+  cachedDataLinks[path] = dataLink;
 
   // download pages up until curr page
-  for (let p = Number(currPage); p < index.currPageNumber; p++) {
+  for (let p = Number(currPage); p < currPageNumber; p++) {
+    // build the page path
+    path = `${domain}/${skapp}/newcontent/page_${p}.json`;
+
     [entries,] = await downloadNewEntries(
       domain,
       EntryType.NEWCONTENT,
       client,
       userPK,
       skapp,
-      `${domain}/${skapp}/newcontent/page_${p}.json`,
-      cachedPageDataLink
+      path,
+      cachedDataLinks[path]
     )
     for (const entry of entries) {
       operations.push({ insertOne: { document: entry }})
     }
   }
 
+  // build the current page path
+  path = `${domain}/${skapp}/newcontent/page_${currPageNumber}.json`;
+
   // download entries up until curr offset
   let currPageDataLink: DataLink;
   [entries, currPageDataLink] = await downloadNewEntries(
-    domain,
+    CONTENTRECORD_DAC_DATA_DOMAIN,
     EntryType.NEWCONTENT,
     client,
     userPK,
     skapp,
-    `${domain}/${skapp}/newcontent/page_${index.currPageNumber}.json`,
-    cachedPageDataLink,
+    path,
+    cachedDataLinks[path],
     Number(currOffset)
   )
   for (const entry of entries) {
     operations.push({ insertOne: { document: entry }})
   }
 
-  // possibly increment consecutive none found
-  let consecNoneFound = Number(newContentConsecNoneFound || 0);
+  // update the cached data link for the current page
+  cachedDataLinks[path] = currPageDataLink;
 
   // insert entries
   const numEntries = operations.length
   if (numEntries) {
-    consecNoneFound = 0
     await entriesDB.bulkWrite(operations)
-  } else {
-    consecNoneFound++
   }
 
-  // update the cached data links
-  cachedIndexDataLinks[skapp] = indexDataLink
-  cachedPageDataLinks[skapp] = currPageDataLink
-
   // update the user state
-  await userDB.updateOne({ _id: user._id }, {
-    $set: {
-      newContentCurrPage: index.currPageNumber,
-      newContentCurrNumEntries: index.currPageNumEntries,
-      newContentConsecNoneFound: new NumberInt(consecNoneFound),
-      newContentIndexDataLinks: cachedIndexDataLinks,
-      newContentCurrPageDataLinks: cachedPageDataLinks,
+  user = await userDB.findOne({ userPK })
+  await userDB.updateOne(
+    { userPK },
+    {
+      $set: {
+        newContentCurrPage: currPageNumber,
+        newContentCurrNumEntries: currPageNumEntries,
+        cachedDataLinks: {
+          ...user.cachedDataLinks,
+          ...cachedDataLinks,
+        },
+      }
     }
-  })
+  )
   return numEntries
 }

@@ -3,7 +3,7 @@ import { CronCommand, CronJob } from 'cron';
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 // tslint:disable-next-line: max-line-length
-import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_SOCIAL_GRAPH, DISABLE_FETCH_USER_PROFILES, SKYNET_JWT, SKYNET_PORTAL_URL } from '../consts';
+import { DEBUG_ENABLED, DISABLE_FETCH_COMMENTS, DISABLE_FETCH_INTERACTIONS, DISABLE_FETCH_NEW_CONTENT, DISABLE_FETCH_POSTS, DISABLE_FETCH_SKAPPS, DISABLE_FETCH_SKYFEED_USERS, DISABLE_FETCH_SOCIAL_GRAPH, DISABLE_FETCH_USER_PROFILES } from '../consts';
 import { COLL_EVENTS } from '../database/index';
 import { MongoDB } from '../database/mongodb';
 import { tryLogEvent } from '../database/utils';
@@ -20,25 +20,16 @@ import { fetchUserProfiles } from './fetch_user_profiles';
 // tslint:disable-next-line: no-require-imports no-var-requires
 const pThrottle = require('p-throttle');
 
-const CRON_TIME_EVERY_15 = '0 */15 * * * *' // every 15'
+const CRON_TIME_EVERY_5 = '0 */5 * * * *' // every 5'
 const CRON_TIME_EVERY_60 = '0 0 * * * *' // every hour
 const CRON_TIME_DEV = '0 * * * * *' // every minute.
 
-export async function init(): Promise<void> {
+export async function init(client: SkynetClient): Promise<void> {
   console.log(`${new Date().toLocaleString()}: Starting cronjobs on ${DEBUG_ENABLED? 'debug': 'production'} schedule`);
 
   // create a connection with the database and fetch the users DB
-  const db = await MongoDB.Connection();
-  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
-
-  // create a client
-  const client = new SkynetClient(
-    SKYNET_PORTAL_URL,
-    { customCookie: SKYNET_JWT }
-  );
-  if (SKYNET_JWT) {
-    console.log(`${new Date().toLocaleString()}: Initialized client using custom JWT: ${SKYNET_JWT ? 'yes': 'no'}`);
-  }
+  const database = await MongoDB.Connection();
+  const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // create a leaky bucket to limit the amount of requests we send the client
   const throttle = pThrottle({
@@ -55,6 +46,7 @@ export async function init(): Promise<void> {
           'fetchUserProfiles',
           fetchUserProfilesMutex,
           fetchUserProfiles,
+          database,
           client,
           eventsDB,
           throttle,
@@ -72,6 +64,7 @@ export async function init(): Promise<void> {
           'fetchSkyFeedUsers',
           fetchSkyFeedUsersMutex,
           fetchSkyFeedUsers,
+          database,
           client,
           eventsDB,
           throttle,
@@ -89,6 +82,7 @@ export async function init(): Promise<void> {
           'fetchSocialGraph',
           fetchSocialGraphMutex,
           fetchSocialGraph,
+          database,
           client,
           eventsDB,
           throttle,
@@ -106,6 +100,7 @@ export async function init(): Promise<void> {
           'fetchSkapps',
           fetchSkappsMutex,
           fetchSkapps,
+          database,
           client,
           eventsDB,
           throttle,
@@ -116,13 +111,14 @@ export async function init(): Promise<void> {
 
   const fetchPostsMutex = new Mutex();
   startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_5,
     () => {
       if (!DISABLE_FETCH_POSTS) {
         tryRun(
           'fetchPosts',
           fetchPostsMutex,
           fetchPosts,
+          database,
           client,
           eventsDB,
           throttle,
@@ -133,13 +129,14 @@ export async function init(): Promise<void> {
 
   const fetchCommentsMutex = new Mutex();
   startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_5,
     () => {
       if (!DISABLE_FETCH_COMMENTS) {
         tryRun(
           'fetchComments',
           fetchCommentsMutex,
           fetchComments,
+          database,
           client,
           eventsDB,
           throttle,
@@ -150,13 +147,14 @@ export async function init(): Promise<void> {
 
   const fetchNewContentMutex = new Mutex();
   startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_5,
     () => {
       if (!DISABLE_FETCH_NEW_CONTENT) {
         tryRun(
           'fetchNewContent',
           fetchNewContentMutex,
           fetchNewContent,
+          database,
           client,
           eventsDB,
           throttle,
@@ -167,13 +165,14 @@ export async function init(): Promise<void> {
 
   const fetchInteractionsMutex = new Mutex();
   startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_5,
     () => {
       if (!DISABLE_FETCH_INTERACTIONS) {
         tryRun(
           'fetchInteractions',
           fetchInteractionsMutex,
           fetchInteractions,
+          database,
           client,
           eventsDB,
           throttle
@@ -187,6 +186,7 @@ async function tryRun(
   context: string,
   mutex: Mutex,
   handler: CronHandler<number>,
+  database: MongoDB,
   client: SkynetClient,
   eventsDB: Collection<IEvent>,
   throttle: Throttle<number>,
@@ -205,7 +205,7 @@ async function tryRun(
     console.log(`${start.toLocaleString()}: ${context} started`)
 
     // execute
-    const added = await handler(client, throttle)
+    const added = await handler(database, client, throttle)
     const end = new Date()
     if (added) {
       console.log(`${end.toLocaleString()}: ${context} ${added} added`)

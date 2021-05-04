@@ -11,11 +11,10 @@ const DATAKEY_FOLLOWING = "following"
 
 // fetchSocialGraph is a simple scraping algorithm that scrapes the social DAC
 // to fetch the entire user graph and scrape all users.
-export async function fetchSocialGraph(client: SkynetClient, throttle: Throttle<number>): Promise<number> {
-  // create a connection with the database and fetch the users DB
-  const db = await MongoDB.Connection();
-  const usersDB = await db.getCollection<IUser>(COLL_USERS);
-  const eventsDB = await db.getCollection<IEvent>(COLL_EVENTS);
+export async function fetchSocialGraph(database: MongoDB, client: SkynetClient, throttle: Throttle<number>): Promise<number> {
+  // fetch all collections
+  const usersDB = await database.getCollection<IUser>(COLL_USERS);
+  const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch all known user pubkeys
   const usersResult = await usersDB.aggregate<{users: string[]}>([
@@ -86,27 +85,36 @@ export async function fetchFollowing(
   let added = 0;
   
   // grab some variables
-  const { userPK, followingDataLinks } = user;
+  const {
+    userPK,
+    cachedDataLinks
+  } = user;
   
   // fetch following
-  const cachedDataLink = followingDataLinks[skapp] || ""
   const path = `${SOCIAL_DAC_DATA_DOMAIN}/${skapp}/${DATAKEY_FOLLOWING}.json`;
-  const { data, dataLink } = await downloadFile<IUserRelations>(
+  const { cached, data, dataLink } = await downloadFile<IUserRelations>(
     client,
     userPK,
     path,
-    cachedDataLink
+    cachedDataLinks[path]
   )
+  if (cached || !data) {
+    return 0
+  }
 
   // update the datalink on the user if it's a new one
-  if (dataLink && dataLink !== cachedDataLink) {
-    followingDataLinks[skapp] = dataLink;
-    await userDB.updateOne({ userPK }, {$set: { followingDataLinks }})
-  }
-
-  if (!data) {
-    return 0;
-  }
+  cachedDataLinks[skapp] = dataLink;
+  user = await userDB.findOne({ userPK })
+  await userDB.updateOne(
+    { userPK },
+    {
+      $set: {
+        cachedDataLinks: {
+          ...user.cachedDataLinks,
+          ...cachedDataLinks,
+        },
+      } }
+  )
 
   // find all new users and insert a user object into the database
   for (const relUserPK of Object.keys(data.relations)) {

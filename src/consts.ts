@@ -3,6 +3,11 @@
 // tslint:disable: no-require-imports
 require('dotenv').config()
 
+export const SKYNET_JWT = process.env.SKYNET_JWT;
+
+export const SCRAPERAPI_PORT =
+  parseInt(process.env.SCRAPERAPI_PORT || '5000', 10)
+
 export const MONGO_CONNECTION_STRING =
   process.env.MONGO_CONNECTION_STRING || 'mongodb://localhost:27017'
 
@@ -53,13 +58,6 @@ export const DISABLE_FETCH_COMMENTS =
 export const DISABLE_FETCH_SKYFEED_USERS =
   process.env.DISABLE_FETCH_SKYFEED_USERS || true;
 
-// user discovery will essentially try and immediately scrape a user after he is
-// being discovered, this is enabled by default because it requires a replica
-// set, currently our local and staging environments are not configured as a
-// replica set.
-export const ENABLE_USER_DISCOVERY =
-  process.env.ENABLE_USER_DISCOVERY || false;
-
 // bootstrap db with some users
 export const TEST_USER_PUBKEYS = [
   "f301891b7e41b107beefe91a133d6efa8c7b0dfe0f5e39650c34b8311c365d39", // pj
@@ -75,5 +73,3 @@ export const TEST_USER_PUBKEYS = [
   "a79dacfd8d58c701eb3572eb417ee524795cc0231a646f93abdb8f5f1a2048cc", // stelb
   "89e5147864297b80f5ddf29711ba8c093e724213b0dcbefbc3860cc6d598cc35", // dghelm
 ]
-
-export const SKYNET_JWT = process.env.SKYNET_JWT;
