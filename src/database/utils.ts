@@ -10,29 +10,17 @@ export async function upsertUser(userDB: Collection<IUser>, userPK: string): Pro
         skapps: [] as string[],
         newContentCurrPage: new NumberInt(0),
         newContentCurrNumEntries: new NumberInt(0),
-        newContentConsecNoneFound: new NumberInt(0),
-        newContentIndexDataLinks: {},
-        newContentCurrPageDataLinks: {},
       
         contentInteractionsCurrPage: new NumberInt(0),
         contentInteractionsNumEntries: new NumberInt(0),
-        contentInteractionsConsecNoneFound: new NumberInt(0),
-        contentInteractionsIndexDataLinks: {},
-        contentInteractionsCurrPageDataLinks: {},
 
         postsCurrPage: new NumberInt(0),
         postsCurrNumEntries: new NumberInt(0),
-        postsConsecNoneFound: new NumberInt(0),
-        postsIndexDataLinks: {},
-        postsCurrPageDataLinks: {},
 
         commentsCurrPage: new NumberInt(0),
         commentsCurrNumEntries: new NumberInt(0),
-        commentsConsecNoneFound: new NumberInt(0),
-        commentsIndexDataLinks: {},
-        commentsCurrPageDataLinks: {},
 
-        followingDataLinks: {},
+        cachedDataLinks: {},
       
         createdAt: new Date(),
       }
