@@ -95,8 +95,8 @@ export interface IUser {
 
   cachedDataLinks: IDictionary<DataLink>;
 
-  mySkyProfile: IMySkyUserProfile;
-  skyIDProfile: IUserProfile;
+  mySkyProfile?: IMySkyUserProfile;
+  skyIDProfile?: IUserProfile;
 
   createdAt: Date;
   discoveredAt?: Date; // will only be set by leaderboard API (insta scrape)

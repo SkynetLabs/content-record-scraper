@@ -48,6 +48,14 @@ export async function downloadNewEntries(
       try {
         entry.metadata = entry.metadata || {}
         const skylinkMetadata = await client.getMetadata(entry.skylink)
+
+        // We currently do not scrape subfiles because those have a "." in their
+        // key, mongo can't handle this without either string replacing the "."
+        // or disabling validation all together. For the time being we simply
+        // strip subfiles since that's not really the information we are after
+        // anyway.
+        delete skylinkMetadata.metadata.subfiles
+
         entry.metadata = {
           ...entry.metadata,
           skylinkMetadata

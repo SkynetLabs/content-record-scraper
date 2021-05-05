@@ -1,7 +1,12 @@
 import { Collection, Int32 as NumberInt } from 'mongodb';
+import { isValidUserPK } from '../api/utils';
 import { IEvent, IUser } from '../types';
 
 export async function upsertUser(userDB: Collection<IUser>, userPK: string): Promise<boolean> {
+  if (!isValidUserPK(userPK)) {
+    return false;
+  }
+
   const { upsertedCount } = await userDB.updateOne(
     { userPK },
     {
