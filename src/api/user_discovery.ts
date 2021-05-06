@@ -13,8 +13,6 @@ import NodeCache from 'node-cache'
 
 const cache = new NodeCache()
 
-
-
 export async function handler(
   req: Request,
   res: Response,

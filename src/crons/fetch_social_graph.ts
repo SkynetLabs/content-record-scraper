@@ -103,7 +103,7 @@ export async function fetchFollowing(
   }
 
   // update the datalink on the user if it's a new one
-  cachedDataLinks[skapp] = dataLink;
+  cachedDataLinks[path] = dataLink;
   user = await userDB.findOne({ userPK })
   await userDB.updateOne(
     { userPK },

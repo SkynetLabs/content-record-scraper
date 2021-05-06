@@ -86,7 +86,7 @@ export async function fetchProfiles(
       }
     )
     const profileStr = JSON.stringify(mySkyProfile)
-    console.log(`Found profile for '${userPK}' (${dataLink}) at path ${path}, ${profileStr}`)
+    console.log(`Found profile for '${userPK}' (${dataLink}) at path ${path}, ${profileStr}, modified ${modifiedCount}`)
     found += modifiedCount
   }
 
