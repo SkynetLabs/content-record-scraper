@@ -3,7 +3,7 @@ import { SignedRegistryEntry, SkynetClient } from 'skynet-js';
 import { DEBUG_ENABLED, MYSKY_PROFILE_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EventType, IEvent, IMySkyUserProfile, IUser, IUserProfile, Throttle } from '../types';
+import { EventType, IEvent, IProfileIndex, IUser, IUserProfile, Throttle } from '../types';
 import { downloadFile, settlePromises } from './utils';
 
 const DATAKEY_MYSKY_PROFILE = "profileIndex"
@@ -58,11 +58,12 @@ export async function fetchProfiles(
   const {
     userPK,
     cachedDataLinks,
+    mySkyProfile: currentMySkyProfile
   } = user;
 
   // fetch MySky profile
   const path = `${MYSKY_PROFILE_DAC_DATA_DOMAIN}/${DATAKEY_MYSKY_PROFILE}.json`;
-  const { cached, data: mySkyProfile, dataLink } = await downloadFile<IMySkyUserProfile>(
+  const { cached, data: updatedMySkyProfile, dataLink } = await downloadFile<IProfileIndex>(
     client,
     userPK,
     path,
@@ -70,24 +71,33 @@ export async function fetchProfiles(
   )
 
   // if found, persist it
-  if (!cached && mySkyProfile) {
-    cachedDataLinks[path] = dataLink
-    user = await userDB.findOne({ userPK })
+  if (!cached && updatedMySkyProfile) {
+
+    // check whether the update is indeed an update, by ensuring the history log
+    // got appended to
+    if (currentMySkyProfile && currentMySkyProfile.historyLog) {
+      const currentHistoryCount = currentMySkyProfile.historyLog.length;
+      const updatedHistoryCount = updatedMySkyProfile.historyLog.length;
+      if (updatedHistoryCount <= currentHistoryCount) {
+        throw new Error(`Received profile update with incorrect history log`)
+      }
+    }
+
+    // update the user and set the new profile and new datalinks
+    cachedDataLinks[path] = dataLink;
     const { modifiedCount } = await userDB.updateOne(
       { userPK },
       {
         $set: {
-          mySkyProfile,
-          cachedDataLinks: {
-            ...user.cachedDataLinks,
-            ...cachedDataLinks,
-          },
+          mySkyProfile: updatedMySkyProfile,
+          cachedDataLinks,
         }
       }
     )
-    const profileStr = JSON.stringify(mySkyProfile)
-    console.log(`Found profile for '${userPK}' (${dataLink}) at path ${path}, ${profileStr}, modified ${modifiedCount}`)
+
     found += modifiedCount
+
+    console.log(`Found new profile for user ${userPK}, ${JSON.stringify(updatedMySkyProfile)}`)
   }
 
   // fetch SkyID profile

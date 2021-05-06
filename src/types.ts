@@ -95,20 +95,39 @@ export interface IUser {
 
   cachedDataLinks: IDictionary<DataLink>;
 
-  mySkyProfile?: IMySkyUserProfile;
+  mySkyProfile?: IProfileIndex;
   skyIDProfile?: IUserProfile;
 
   createdAt: Date;
   discoveredAt?: Date; // will only be set by leaderboard API (insta scrape)
 }
 
+export interface IProfileIndex {
+  version: number;
+  profile: IMySkyUserProfile;
+  lastUpdatedBy: string;
+  historyLog: IHistoryLog[];
+}
+
 export interface IMySkyUserProfile {
   version: number;
   username: string;
+  firstName?: string;
+  lastName?: string;
+  emailID?: string;
+  contact?: string;
   aboutMe?: string;
   location?: string;
   topics?: string[];
-  avatar?: unknown[];
+  avatar?: IAvatar[];
+  connections?: unknown[];
+}
+
+export interface IAvatar {
+  ext: string,
+  w: number,
+  h: number,
+  url: string
 }
 
 export interface IHistoryLog {

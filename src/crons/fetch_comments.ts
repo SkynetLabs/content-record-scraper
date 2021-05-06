@@ -71,28 +71,23 @@ export async function fetchEntries(
   
   // build the index path
   const domain = FEED_DAC_DATA_DOMAIN;
-  let path = `${domain}/${skapp}/comments/index.json`
+  const indexPath = `${domain}/${skapp}/comments/index.json`
 
   // fetch the index
-  const { cached, data: index, dataLink } = await downloadFile<IIndex>(
+  const { cached, data: index, dataLink: indexDataLink } = await downloadFile<IIndex>(
     client,
     userPK,
-    path,
-    cachedDataLinks[path]
+    indexPath,
+    cachedDataLinks[indexPath]
   )
   if (!index || cached) {
     return 0; // no file found or no changes since last download
   }
-  const { currPageNumber, currPageNumEntries } = index;
-
-  // update the cached data link for the index page
-  cachedDataLinks[path] = dataLink;
 
   // download pages up until curr page
+  const { currPageNumber, currPageNumEntries } = index;
   for (let p = Number(currPage); p < currPageNumber; p++) {
-    // build the page path
-    path = `${domain}/${skapp}/comments/page_${p}.json`;
-
+    const path = `${domain}/${skapp}/comments/page_${p}.json`;
     [entries,] = await downloadNewEntries(
       FEED_DAC_DATA_DOMAIN,
       EntryType.COMMENT,
@@ -108,7 +103,7 @@ export async function fetchEntries(
   }
 
   // build the current page path
-  path = `${domain}/${skapp}/comments/page_${currPageNumber}.json`;
+  const currPagePath = `${domain}/${skapp}/comments/page_${currPageNumber}.json`;
 
   // download entries up until curr offset
   let currPageDataLink: DataLink;
@@ -118,16 +113,13 @@ export async function fetchEntries(
     client,
     userPK,
     skapp,
-    path,
-    cachedDataLinks[path],
+    currPagePath,
+    cachedDataLinks[currPagePath],
     Number(currOffset)
   )
   for (const entry of entries) {
     operations.push({ insertOne: { document: entry }})
   }
-
-  // update the cached data link for the current page
-  cachedDataLinks[path] = currPageDataLink;
 
   // insert entries
   const numEntries = operations.length
@@ -137,16 +129,19 @@ export async function fetchEntries(
 
   // update the user state, refetch so we don't overwrite cached links
   user = await userDB.findOne({ userPK })
+  const cachedDataLinksUpdate = {
+    ...user.cachedDataLinks,
+    indexPath: indexDataLink,
+    currPagePath: currPageDataLink,
+  }
+
   await userDB.updateOne(
     { userPK },
     {
       $set: {
         commentsCurrPage: currPageNumber,
         commentsCurrNumEntries: currPageNumEntries,
-        cachedDataLinks: {
-          ...user.cachedDataLinks,
-          ...cachedDataLinks,
-        },
+        cachedDataLinks: cachedDataLinksUpdate,
       }
     }
   )

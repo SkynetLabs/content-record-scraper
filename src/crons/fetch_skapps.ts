@@ -62,13 +62,16 @@ export async function fetchNewSkapps(
   for (const skapp of skapps) {
     map[skapp] = true
   }
-  
+
   let added = 0;
+
   const dacDataDomains = [
     CONTENTRECORD_DAC_DATA_DOMAIN,
     FEED_DAC_DATA_DOMAIN,
     SOCIAL_DAC_DATA_DOMAIN
   ]
+  
+  const cachedDataLinksUpdates = {};
   for (const domain of dacDataDomains) {
     // download the dictionary
     const path = `${domain}/skapps.json`
@@ -83,7 +86,7 @@ export async function fetchNewSkapps(
     }
 
     // update the cached data link    
-    cachedDataLinks[path] = dataLink;
+    cachedDataLinksUpdates[path] = dataLink;
 
     // loop all of the skapps and add the ones we're missing
     for (const skapp of Object.keys(dict)) {
@@ -105,7 +108,7 @@ export async function fetchNewSkapps(
           skapps,
           cachedDataLinks: {
             ...user.cachedDataLinks,
-            ...cachedDataLinks,
+            ...cachedDataLinksUpdates,
           },
         }
       }

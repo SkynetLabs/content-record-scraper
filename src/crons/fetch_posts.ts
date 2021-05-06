@@ -71,29 +71,23 @@ export async function fetchEntries(
   } = user;
   
   // build the index path
-  let path =`${domain}/${skapp}/posts/index.json`
+  const indexPath =`${domain}/${skapp}/posts/index.json`
 
   // fetch the index
-  const { cached, data: index, dataLink } = await downloadFile<IIndex>(
+  const { cached, data: index, dataLink: indexDataLink } = await downloadFile<IIndex>(
     client,
     userPK,
-    path,
-    cachedDataLinks[path]
+    indexPath,
+    cachedDataLinks[indexPath]
   )
   if (!index || cached) {
     return 0; // no file found or no changes since last download
   }
 
-  const { currPageNumber, currPageNumEntries } = index;
-
-  // update the cached data link for the index page
-  cachedDataLinks[path] = dataLink;
-
   // download pages up until curr page
+  const { currPageNumber, currPageNumEntries } = index;
   for (let p = Number(currPage); p < currPageNumber; p++) {
-    // build the page path
-    path = `${domain}/${skapp}/posts/page_${p}.json`;
-
+    const path = `${domain}/${skapp}/posts/page_${p}.json`;
     [entries,] = await downloadNewEntries(
       FEED_DAC_DATA_DOMAIN,
       EntryType.POST,
@@ -109,7 +103,7 @@ export async function fetchEntries(
   }
 
   // build the current page path
-  path = `${domain}/${skapp}/posts/page_${currPageNumber}.json`;
+  const currPagePath = `${domain}/${skapp}/posts/page_${currPageNumber}.json`;
   
   // download entries up until curr offset
   let currPageDataLink: DataLink;
@@ -119,21 +113,26 @@ export async function fetchEntries(
     client,
     userPK,
     skapp,
-    path,
-    cachedDataLinks[path],
+    currPagePath,
+    cachedDataLinks[currPagePath],
     Number(currOffset)
   )
   for (const entry of entries) {
     operations.push({ insertOne: { document: entry }})
   }
 
-  // update the cached data link for the current page
-  cachedDataLinks[path] = currPageDataLink;
-
   // insert entries
   const numEntries = operations.length
   if (numEntries) {
     await entriesDB.bulkWrite(operations)
+  }
+
+  // update the user state, refetch so we don't overwrite cached links
+  user = await userDB.findOne({ userPK })
+  const cachedDataLinksUpdate = {
+    ...user.cachedDataLinks,
+    indexPath: indexDataLink,
+    currPagePath: currPageDataLink,
   }
 
   // update the user state
@@ -144,10 +143,7 @@ export async function fetchEntries(
       $set: {
         postsCurrPage: currPageNumber,
         postsCurrNumEntries: currPageNumEntries,
-        cachedDataLinks: {
-          ...user.cachedDataLinks,
-          ...cachedDataLinks,
-        },
+        cachedDataLinks: cachedDataLinksUpdate,
       }
     }
   )
