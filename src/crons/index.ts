@@ -20,8 +20,7 @@ import { fetchUserProfiles } from './fetch_user_profiles';
 // tslint:disable-next-line: no-require-imports no-var-requires
 const pThrottle = require('p-throttle');
 
-const CRON_TIME_EVERY_15 = '0 */15 * * * *' // every 5'
-const CRON_TIME_EVERY_60 = '0 0 * * * *' // every hour
+const CRON_TIME_EVERY_15 = '0 */15 * * * *' // every 15'
 const CRON_TIME_DEV = '0 * * * * *' // every minute.
 
 export async function init(client: SkynetClient): Promise<void> {
@@ -39,7 +38,7 @@ export async function init(client: SkynetClient): Promise<void> {
 
   const fetchUserProfilesMutex = new Mutex();
   startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
       if (!DISABLE_FETCH_USER_PROFILES) {
         tryRun(
@@ -57,7 +56,7 @@ export async function init(client: SkynetClient): Promise<void> {
 
   const fetchSkyFeedUsersMutex = new Mutex();
   startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
       if (!DISABLE_FETCH_SKYFEED_USERS) {
         tryRun(
@@ -75,7 +74,7 @@ export async function init(client: SkynetClient): Promise<void> {
 
   const fetchSocialGraphMutex = new Mutex();
   startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
       if (!DISABLE_FETCH_SOCIAL_GRAPH) {
         tryRun(
@@ -93,7 +92,7 @@ export async function init(client: SkynetClient): Promise<void> {
 
   const fetchSkappsMutex = new Mutex();
   startCronJob(
-    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_60,
+    DEBUG_ENABLED ? CRON_TIME_DEV : CRON_TIME_EVERY_15,
     () => {
       if (!DISABLE_FETCH_SKAPPS) {
         tryRun(

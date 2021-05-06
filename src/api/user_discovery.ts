@@ -9,6 +9,9 @@ import { fetchProfiles } from "../crons/fetch_user_profiles";
 import { SkynetClient } from 'skynet-js';
 import { EventType, IContent, IEvent, IUser } from '../types';
 import { upsertUser } from '../database/utils';
+import NodeCache from 'node-cache'
+
+const cache = new NodeCache()
 
 export async function handler(
   req: Request,
@@ -31,6 +34,15 @@ export async function handler(
   
   // fetch 'scrape' param from request
   const scrape = Boolean(req.query.scrape) || false
+
+  // check whether we're not getting spammed
+  if (scrape) {
+    if (cache.has(userPK)) {
+      res.status(429).json({ error: "given 'userPK' was scraped recently" });
+      return
+    }
+    cache.set(userPK, true, 30)
+  }
 
   console.log(`${new Date().toLocaleString()}: user discovery request received for user ${userPK}, scrape ${scrape}\n\n`);
 

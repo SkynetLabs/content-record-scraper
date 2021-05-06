@@ -25,6 +25,7 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "mongodb": "^3.6.6",
+    "node-cache": "^5.1.2",
     "p-throttle": "^4.1.1",
     "skynet-js": "^4.0.5-beta"
   },
