@@ -81,11 +81,11 @@ export async function handler(
   try {
     // fetch the user's profiles
     found = await fetchProfiles(client, usersDB, user)
-    console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} profiles`);
+    console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} profile updates`);
 
     // fetch the user's skapps
     found = await fetchNewSkapps(client, usersDB, user)
-    console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} skapps`);
+    console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new skapps`);
 
     // refetch the user to get skapp list
     user = await usersDB.findOne({ userPK })
@@ -97,9 +97,9 @@ export async function handler(
     // now loop all skapps and fire a scrape event
     for (const skapp of user.skapps) {
       triggerFn('new content', fetchNewContent, client, usersDB, entriesDB, user, skapp)
-      triggerFn('interactions', fetchInteractions, client, usersDB, entriesDB, user, skapp)
-      triggerFn('posts', fetchPosts, client, usersDB, entriesDB, user, skapp)
-      triggerFn('comments', fetchComments, client, usersDB, entriesDB, user, skapp)
+      triggerFn('new interactions', fetchInteractions, client, usersDB, entriesDB, user, skapp)
+      triggerFn('new posts', fetchPosts, client, usersDB, entriesDB, user, skapp)
+      triggerFn('new comments', fetchComments, client, usersDB, entriesDB, user, skapp)
     }
 
   } catch (error) {

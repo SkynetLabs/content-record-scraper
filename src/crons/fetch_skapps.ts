@@ -105,7 +105,7 @@ export async function fetchNewSkapps(
       { userPK },
       {
         $set: {
-          skapps,
+          skapps: skapps.filter(Boolean),
           cachedDataLinks: {
             ...user.cachedDataLinks,
             ...cachedDataLinksUpdates,
