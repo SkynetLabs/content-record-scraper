@@ -13,6 +13,8 @@ import NodeCache from 'node-cache'
 
 const cache = new NodeCache()
 
+
+
 export async function handler(
   req: Request,
   res: Response,
@@ -42,13 +44,13 @@ export async function handler(
       return
     }
     cache.set(userPK, true, 30)
+    console.log(`${new Date().toLocaleString()}: scraping user ${userPK}`);
   }
-
-  console.log(`${new Date().toLocaleString()}: user discovery request received for user ${userPK}, scrape ${scrape}\n\n`);
 
   // upsert the user and log a discovery event in case it was an unknown user
   const discovered = await upsertUser(usersDB, userPK)
   if (discovered) {
+    console.log(`${new Date().toLocaleString()}: discovered user ${userPK}`);
     try {
       await eventsDB.insertOne({
         context: 'userdiscovery',
@@ -77,12 +79,15 @@ export async function handler(
     return
   }
 
+  let found;
   try {
     // fetch the user's profiles
-    await fetchProfiles(client, usersDB, user)
+    found = await fetchProfiles(client, usersDB, user)
+    console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} profiles`);
 
     // fetch the user's skapps
-    await fetchNewSkapps(client, usersDB, user)
+    found = await fetchNewSkapps(client, usersDB, user)
+    console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} skapps`);
 
     // refetch the user to get skapp list
     user = await usersDB.findOne({ userPK })
@@ -93,16 +98,43 @@ export async function handler(
 
     // now loop all skapps and fire a scrape event
     for (const skapp of user.skapps) {
-      fetchNewContent(client, usersDB, entriesDB, user, skapp).catch()
-      fetchInteractions(client, usersDB, entriesDB, user, skapp).catch()
-      fetchPosts(client, usersDB, entriesDB, user, skapp).catch()
-      fetchComments(client, usersDB, entriesDB, user, skapp).catch()    
+      triggerFn('new content', fetchNewContent, client, usersDB, entriesDB, user, skapp)
+      triggerFn('interactions', fetchInteractions, client, usersDB, entriesDB, user, skapp)
+      triggerFn('posts', fetchPosts, client, usersDB, entriesDB, user, skapp)
+      triggerFn('comments', fetchComments, client, usersDB, entriesDB, user, skapp)
     }
 
   } catch (error) {
+    console.log(`${new Date().toLocaleString()}: user ${userPK} scrape error, ${error.message}`);
     res.status(500).json({ error: `error occurred while discovering user, err: ${error.message}` });
     return
   }
 
   res.status(200).json({ user })
 }
+
+function triggerFn(
+  name: string,
+  fn: ScrapeFn,
+  client: SkynetClient,
+  userDB: Collection<IUser>,
+  entriesDB: Collection<IContent>,
+  user: IUser,
+  skapp: string
+): void {
+  fn(client, userDB, entriesDB, user, skapp)
+    .then(cnt =>
+      console.log(`${new Date().toLocaleString()}: ${user.userPK} ${skapp}, found ${cnt} ${name}`)
+    )
+    .catch(err => 
+      console.log(`${new Date().toLocaleString()}: ${user.userPK} ${skapp}, ${name} error ${err.message}`)
+    )
+}
+
+type ScrapeFn = (
+  client: SkynetClient,
+  userDB: Collection<IUser>,
+  entriesDB: Collection<IContent>,
+  user: IUser,
+  skapp: string
+) => Promise<number>
