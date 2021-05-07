@@ -100,17 +100,13 @@ export async function fetchNewSkapps(
 
     // loop all of the skapps and add the ones we're missing
     for (const skapp of Object.keys(dict)) {
-      if (!map[skapp]) {
-        if (isValidSkappName(
-          skapp,
-          allowListItems,
-          blockListItems
-        )) {
-          added++;
-          skapps.push(skapp)
-        } else {
-          console.log(`Skipping ${skapp}, considered invalid skapp name`);
-        }
+      if (!map[skapp] && isValidSkappName(
+        skapp,
+        allowListItems,
+        blockListItems
+      )) {
+        added++;
+        skapps.push(skapp)
       } 
     }
   }
