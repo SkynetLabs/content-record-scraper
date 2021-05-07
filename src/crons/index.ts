@@ -21,7 +21,7 @@ import { fetchUserProfiles } from './fetch_user_profiles';
 const pThrottle = require('p-throttle');
 
 const CRON_TIME_EVERY_15 = '0 */15 * * * *' // every 15'
-const CRON_TIME_DEV = '0 * * * * *' // every minute.
+const CRON_TIME_DEV = '*/30 * * * * *' // every minute.
 
 export async function init(client: SkynetClient): Promise<void> {
   console.log(`${new Date().toLocaleString()}: Starting cronjobs on ${DEBUG_ENABLED? 'debug': 'production'} schedule`);

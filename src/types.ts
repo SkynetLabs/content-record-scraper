@@ -1,9 +1,8 @@
 export * from './skystandards'; // re-export
 import { ObjectId } from "mongodb";
-import { Int32 as NumberInt } from 'mongodb'
-import { Post } from "./skystandards";
 import { SkynetClient } from 'skynet-js';
 import { MongoDB } from './database/mongodb';
+import { Post } from "./skystandards";
 
 export enum EventType {
   ITERATION_SUCCESS = 'ITERATION_SUCCESS',
@@ -81,17 +80,17 @@ export interface IUser {
   userPK: string;
   skapps: string[];
 
-  newContentCurrPage: NumberInt;
-  newContentCurrNumEntries: NumberInt;
+  newContentCurrPage: IDictionary<number>;
+  newContentCurrNumEntries: IDictionary<number>;
 
-  contentInteractionsCurrPage: NumberInt;
-  contentInteractionsNumEntries: NumberInt;
+  contentInteractionsCurrPage: IDictionary<number>;
+  contentInteractionsNumEntries: IDictionary<number>;
 
-  postsCurrPage: NumberInt;
-  postsCurrNumEntries: NumberInt;
+  postsCurrPage: IDictionary<number>;
+  postsCurrNumEntries: IDictionary<number>;
 
-  commentsCurrPage: NumberInt;
-  commentsCurrNumEntries: NumberInt;
+  commentsCurrPage: IDictionary<number>;
+  commentsCurrNumEntries: IDictionary<number>;
 
   cachedDataLinks: IDictionary<DataLink>;
 

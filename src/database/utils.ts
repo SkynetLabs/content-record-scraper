@@ -1,4 +1,4 @@
-import { Collection, Int32 as NumberInt } from 'mongodb';
+import { Collection } from 'mongodb';
 import { isValidUserPK } from '../api/utils';
 import { IEvent, IUser } from '../types';
 
@@ -13,17 +13,18 @@ export async function upsertUser(userDB: Collection<IUser>, userPK: string): Pro
       $setOnInsert: {
         userPK,
         skapps: [] as string[],
-        newContentCurrPage: new NumberInt(0),
-        newContentCurrNumEntries: new NumberInt(0),
+
+        newContentCurrPage: {},
+        newContentCurrNumEntries: {},
       
-        contentInteractionsCurrPage: new NumberInt(0),
-        contentInteractionsNumEntries: new NumberInt(0),
+        contentInteractionsCurrPage: {},
+        contentInteractionsNumEntries: {},
 
-        postsCurrPage: new NumberInt(0),
-        postsCurrNumEntries: new NumberInt(0),
+        postsCurrPage: {},
+        postsCurrNumEntries: {},
 
-        commentsCurrPage: new NumberInt(0),
-        commentsCurrNumEntries: new NumberInt(0),
+        commentsCurrPage: {},
+        commentsCurrNumEntries: {},
 
         cachedDataLinks: {},
       

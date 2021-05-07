@@ -64,10 +64,13 @@ export async function fetchEntries(
   // grab some info from the user object
   const {
     userPK,
-    newContentCurrPage: currPage,
-    newContentCurrNumEntries: currOffset,
+    newContentCurrPage,
+    newContentCurrNumEntries,
     cachedDataLinks,
   } = user;
+
+  const currPage = newContentCurrPage[skapp] || 0;
+  const currOffset = newContentCurrNumEntries[skapp] || 0;
 
   // build the index path
   const domain = CONTENTRECORD_DAC_DATA_DOMAIN;
@@ -84,8 +87,23 @@ export async function fetchEntries(
     return 0; // no file found or no changes since last download
   }
 
-  // download pages up until curr page
+  // immediately update curr page and curr num entries with the values in the
+  // index file, this is not ideal as we might miss entries if the download
+  // fails, but it's better than counting entries twice
   const { currPageNumber, currPageNumEntries } = index;
+  newContentCurrPage[skapp] = currPageNumber;
+  newContentCurrNumEntries[skapp] = currPageNumEntries;
+  await userDB.updateOne(
+    { userPK },
+    {
+      $set: {
+        newContentCurrPage,
+        newContentCurrNumEntries,
+      }  
+    }
+  )
+
+  // download pages up until curr page
   for (let p = Number(currPage); p < currPageNumber; p++) {
     const path = `${domain}/${skapp}/newcontent/page_${p}.json`;
     [entries,] = await downloadNewEntries(
@@ -127,23 +145,15 @@ export async function fetchEntries(
     await entriesDB.bulkWrite(operations)
   }
 
-  // update the user state, refetch so we don't overwrite cached links
+  // update the cached data links, refresh so we don't overwrite prior updates
   user = await userDB.findOne({ userPK })
   const cachedDataLinksUpdate = { ...user.cachedDataLinks }
   cachedDataLinksUpdate[indexPath] = indexDataLink;
   cachedDataLinksUpdate[currPagePath] = currPageDataLink;
-  
-  // update the user state
-  user = await userDB.findOne({ userPK })
   await userDB.updateOne(
     { userPK },
-    {
-      $set: {
-        newContentCurrPage: currPageNumber,
-        newContentCurrNumEntries: currPageNumEntries,
-        cachedDataLinks: cachedDataLinksUpdate,
-      }
-    }
+    { $set: { cachedDataLinks: cachedDataLinksUpdate }}
   )
+
   return numEntries
 }
