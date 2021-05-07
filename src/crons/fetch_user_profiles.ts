@@ -28,6 +28,7 @@ export async function fetchUserProfiles(database: MongoDB, client: SkynetClient,
       null,
       client,
       usersDB,
+      eventsDB,
       user,
     ))()
 
