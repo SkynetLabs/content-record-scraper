@@ -76,4 +76,5 @@ export const TEST_USER_PUBKEYS = [
   "611f0e3730c028d618362aaaa19b00aa50bdf31480c627baf006abcc88f1c97a", // redsolv
   "a79dacfd8d58c701eb3572eb417ee524795cc0231a646f93abdb8f5f1a2048cc", // stelb
   "89e5147864297b80f5ddf29711ba8c093e724213b0dcbefbc3860cc6d598cc35", // dghelm
+  "fbc7ab46a9c7f203dbf52e85a3ac124d4c89a09931269244941eeb96a35831f0", // ericflo
 ]
