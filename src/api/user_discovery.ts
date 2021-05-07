@@ -82,11 +82,15 @@ export async function handler(
   try {
     // fetch the user's profiles
     found = await fetchProfiles(client, usersDB, eventsDB, user)
-    console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} profile updates`);
+    if (found) {
+      console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} profile updates`);
+    }
 
     // fetch the user's skapps
     found = await fetchNewSkapps(client, usersDB, user)
-    console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new skapps`);
+    if (found) {
+      console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new skapps`);
+    }
 
     // refetch the user to get skapp list
     user = await usersDB.findOne({ userPK })
@@ -97,42 +101,50 @@ export async function handler(
 
     // now loop all skapps and fire a scrape event
     for (const skapp of user.skapps) {
-      triggerFn(
-        'new content',
-        fetchNewContent,
-        client,
-        usersDB,
-        entriesDB,
-        user,
-        skapp
-      )
-      triggerFn(
-        'new interactions',
-        fetchInteractions,
-        client,
-        usersDB,
-        entriesDB,
-        user,
-        skapp
-      )
-      triggerFn(
-        'new posts',
-        fetchPosts,
-        client,
-        usersDB,
-        entriesDB,
-        user,
-        skapp
-      )
-      triggerFn(
-        'new comments',
-        fetchComments,
-        client,
-        usersDB,
-        entriesDB,
-        user,
-        skapp
-      )
+      try {
+        found = await fetchNewContent(
+          client,
+          usersDB,
+          entriesDB,
+          user,
+          skapp
+        )
+        if (found) {
+          console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new content entries`);
+        }
+        found = await fetchInteractions(
+          client,
+          usersDB,
+          entriesDB,
+          user,
+          skapp
+        )
+        if (found) {
+          console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new interaction entries`);
+        }
+        found = await fetchPosts(
+          client,
+          usersDB,
+          entriesDB,
+          user,
+          skapp
+        );
+        if (found) {
+          console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new post entries`);
+        }
+        found = await fetchComments(
+          client,
+          usersDB,
+          entriesDB,
+          user,
+          skapp
+        )
+        if (found) {
+          console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new comment entries`);
+        }
+      } catch (error) {
+        console.log(`${new Date().toLocaleString()}: error scraping ${skapp} for user '${user.userPK}'`, error)
+      }
     }
 
   } catch (error) {
@@ -143,29 +155,3 @@ export async function handler(
 
   res.status(200).json({ user })
 }
-
-function triggerFn(
-  name: string,
-  fn: ScrapeFn,
-  client: SkynetClient,
-  userDB: Collection<IUser>,
-  entriesDB: Collection<IContent>,
-  user: IUser,
-  skapp: string
-): void {
-  fn(client, userDB, entriesDB, user, skapp)
-    .then(cnt =>
-      console.log(`${new Date().toLocaleString()}: ${user.userPK} ${skapp}, found ${cnt} ${name}`)
-    )
-    .catch(err => 
-      console.log(`${new Date().toLocaleString()}: ${user.userPK} ${skapp}, ${name} error ${err.message}`)
-    )
-}
-
-type ScrapeFn = (
-  client: SkynetClient,
-  userDB: Collection<IUser>,
-  entriesDB: Collection<IContent>,
-  user: IUser,
-  skapp: string
-) => Promise<number>
