@@ -129,11 +129,9 @@ export async function fetchEntries(
 
   // update the user state, refetch so we don't overwrite cached links
   user = await userDB.findOne({ userPK })
-  const cachedDataLinksUpdate = {
-    ...user.cachedDataLinks,
-    indexPath: indexDataLink,
-    currPagePath: currPageDataLink,
-  }
+  const cachedDataLinksUpdate = { ...user.cachedDataLinks }
+  cachedDataLinksUpdate[indexPath] = indexDataLink;
+  cachedDataLinksUpdate[currPagePath] = currPageDataLink;
   
   // update the user state
   user = await userDB.findOne({ userPK })
