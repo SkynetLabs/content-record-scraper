@@ -6,8 +6,8 @@ import { MongoDB } from '../database/mongodb';
 import { EListType, EventType, IDictionary, IEvent, IList, IUser, Throttle } from '../types';
 import { downloadFile, settlePromises } from './utils';
 
-let allowListItems: string[];
-let blockListItems: string[];
+let allowListItems: string[] = [];
+let blockListItems: string[] = [];
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
@@ -19,10 +19,10 @@ export async function fetchSkapps(database: MongoDB, client: SkynetClient, throt
 
   // fetch allowlist and blocklists
   const allowList = await listsDB.findOne({ type: EListType.SKAPP_ALLOWLIST })
-  allowListItems = allowList ? allowList.items : [];
+  allowListItems = allowList ? allowList.items || [] : [];
 
   const blockList = await listsDB.findOne({ type: EListType.SKAPP_BLOCKLIST })
-  blockListItems = blockList ? blockList.items : [];
+  blockListItems = blockList ? blockList.items || [] : [];
 
   // fetch a user cursor
   const userCursor = usersDB.find().sort({$natural: -1});
@@ -137,6 +137,13 @@ function isValidSkappName(
   allowList: string[],
   blockList: string[]
 ): boolean {
+  if (allowList === undefined || blockList === undefined) {
+    console.log(
+      'developer error, allow/block list undefined',
+      allowList,
+      blockList
+    )
+  }
   // allowlist and blocklist overrule the validation
   if (allowList.includes(skapp)) {
     return true;

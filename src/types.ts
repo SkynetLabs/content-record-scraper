@@ -222,6 +222,9 @@ export interface IUserRelations {
 }
 
 export function isFeedDACPage(page: IPage): boolean {
+  if (!page) {
+    return false;
+  }
   return Object.keys(page).includes('$schema');
 }
 
