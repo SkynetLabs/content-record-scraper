@@ -2,17 +2,25 @@
 
 ## Introduction
 
-This repository contains a scraper that will scrape information from the Content
-Record DAC. It will periodically download the index and page files used by the
-Content Record and persist those in a Mongo database.
+This repository contains a scraper that will scrape information from several
+different DACs:
+
+- Content Record DAC
+- Feed DAC
+- Social DAC
+
+ It will periodically download the index and page files used by these DACs and
+ persist whatever content is in them into a Mongo database. By doing so we
+ essentially collect a database of content and users, and have all the means to
+ discover relationships between them. Which user is creating the most content,
+ which skapp is most popular, what user interacts with what type of content and
+ so on.
 
 ## Data Model
 
 In the mongo database there will be three collections:
 
-- `entries`
-- `events`
-- `users`
+- **entries**:
 
 In the `entries` collection we keep track of all of the content that gets
 created, alongside all the interactions that occur with that content. In the
@@ -20,15 +28,24 @@ created, alongside all the interactions that occur with that content. In the
 state prevents the scraper from unnecessarily re-indexing already indexed
 content and/or interactions.
 
+- **events**:
+
 The `events` collection is only there for debugging purposes and contains some
 extra information about how the scraper is performing. Things like duration,
 errors, amount of entities added and so on. This collection automatically
 removes entries older than a week to ensure this collection does not perpetually
 grows in size.
 
+- **users**:
+
 The users are very important as they will need to be feeded to the scraper. The
 scraper does not extend its user base on its own, it will only scan the content
 records for the users it knows, and keep those up-to-date.
+
+- **lists**:
+
+The `lists` collection contains several allow- and blocklist that provide us
+the flexibility of allowing or blocking certain skapps and or users.
 
 ## Architecture
 
@@ -79,6 +96,15 @@ scraper will log its current env variables when it boots.
 - **CONTENTRECORD_DAC_DATA_DOMAIN**: defaults to `contentrecord.hns`
 - **SKYNET_PORTAL_URL**: defaults to `https://siasky.net`
 
+Arguably the most important environment variable is:
+
+- **SKYNET_JWT**
+
+set that to your accounts cookie to ensure the scraper is using your account,
+and is not ratelimited. Without an account this scraper won't perform as good,
+if you do decide to run it without an account, please adjust the API rate
+limits, defined in `crons/index.ts:34`.
+
 The following variables allow temporarily disabling some of the crons.
 
 - **DISABLE_FETCH_USER_PROFILES**
@@ -122,5 +148,4 @@ This is important if you want to debug the scraper. To do so, simply insert a
 user record manually. See `utils.ts` for an example of an empty user object.
 
 You can do this through the mongo shell or use a mongo client like Robo3T or
-MongoDB Compass. **For convenience the above users is inserted automatically when
-the scraper starts.**
+MongoDB Compass. **We bootstrap a bunch of users when the scraper starts.**

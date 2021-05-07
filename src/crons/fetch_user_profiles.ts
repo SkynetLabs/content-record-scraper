@@ -3,6 +3,7 @@ import { SignedRegistryEntry, SkynetClient } from 'skynet-js';
 import { DEBUG_ENABLED, MYSKY_PROFILE_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
+import { tryLogEvent } from '../database/utils';
 import { EventType, IEvent, IProfileIndex, IUser, IUserProfile, Throttle } from '../types';
 import { downloadFile, settlePromises } from './utils';
 
@@ -50,6 +51,7 @@ export async function fetchUserProfiles(database: MongoDB, client: SkynetClient,
 export async function fetchProfiles(
   client: SkynetClient,
   userDB: Collection<IUser>,
+  eventsDB: Collection<IEvent>,
   user: IUser,
 ): Promise<number> {
   let found = 0;
@@ -75,29 +77,48 @@ export async function fetchProfiles(
 
     // check whether the update is indeed an update, by ensuring the history log
     // got appended to
+    let validProfile = true;
     if (currentMySkyProfile && currentMySkyProfile.historyLog) {
       const currentHistoryCount = currentMySkyProfile.historyLog.length;
       const updatedHistoryCount = updatedMySkyProfile.historyLog.length;
       if (updatedHistoryCount <= currentHistoryCount) {
-        throw new Error(`Received profile update with incorrect history log`)
+        validProfile = false;
+        await tryLogEvent(eventsDB, {
+          context: 'fetchUserProfiles', 
+          type: EventType.FETCHUSERPROFILES_ERROR,
+          error: 'received profile update with incorrect history log',
+          metadata: {
+            currentMySkyProfile,
+            updatedMySkyProfile,
+            dataLink,
+            path,
+            userPK,
+          },
+          createdAt: new Date(),
+        })
+        // we purposefully do not throw here to avoid logging the error twice,
+        // by logging the event manually here we can add metadata, a NTH would
+        // be to throw an error with context attached so `settlePromises` would
+        // pick that up
       }
     }
 
     // update the user and set the new profile and new datalinks
-    cachedDataLinks[path] = dataLink;
-    const { modifiedCount } = await userDB.updateOne(
-      { userPK },
-      {
-        $set: {
-          mySkyProfile: updatedMySkyProfile,
-          cachedDataLinks,
+    if (validProfile) {
+      cachedDataLinks[path] = dataLink;
+      const { modifiedCount } = await userDB.updateOne(
+        { userPK },
+        {
+          $set: {
+            mySkyProfile: updatedMySkyProfile,
+            cachedDataLinks,
+          }
         }
-      }
-    )
-
-    found += modifiedCount
-
-    console.log(`Found new profile for user ${userPK}, ${JSON.stringify(updatedMySkyProfile)}`)
+      )
+  
+      found += modifiedCount
+      console.log(`Found new profile for user ${userPK}, ${JSON.stringify(updatedMySkyProfile)}`)
+    }
   }
 
   // fetch SkyID profile

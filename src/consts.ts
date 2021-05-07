@@ -32,6 +32,10 @@ export const DEBUG_ENABLED = process.env.DEBUG_ENABLED === 'true';
 
 export const EVENT_EXPIRY_IN_S = 60 * 60 * 24 * 7; // last 7 days
 
+// this defines how many times a user can be scraped, so a value of 60 means
+// that a user can trigger a scrape only once every minute
+export const USER_SCRAPE_RATE_LIMIT_IN_S = 60
+
 // allow disabling crons from env
 export const DISABLE_FETCH_USER_PROFILES =
   process.env.DISABLE_FETCH_USER_PROFILES || false;

@@ -10,6 +10,7 @@ import { SkynetClient } from 'skynet-js';
 import { EventType, IContent, IEvent, IUser } from '../types';
 import { upsertUser } from '../database/utils';
 import NodeCache from 'node-cache'
+import { USER_SCRAPE_RATE_LIMIT_IN_S } from '../consts';
 
 const cache = new NodeCache()
 
@@ -41,7 +42,7 @@ export async function handler(
       res.status(429).json({ error: "given 'userPK' was scraped recently" });
       return
     }
-    cache.set(userPK, true, 30)
+    cache.set(userPK, true, USER_SCRAPE_RATE_LIMIT_IN_S)
     console.log(`${new Date().toLocaleString()}: scraping user ${userPK}`);
   }
 
@@ -77,10 +78,10 @@ export async function handler(
     return
   }
 
-  let found;
+  let found: number;
   try {
     // fetch the user's profiles
-    found = await fetchProfiles(client, usersDB, user)
+    found = await fetchProfiles(client, usersDB, eventsDB, user)
     console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} profile updates`);
 
     // fetch the user's skapps
@@ -96,10 +97,42 @@ export async function handler(
 
     // now loop all skapps and fire a scrape event
     for (const skapp of user.skapps) {
-      triggerFn('new content', fetchNewContent, client, usersDB, entriesDB, user, skapp)
-      triggerFn('new interactions', fetchInteractions, client, usersDB, entriesDB, user, skapp)
-      triggerFn('new posts', fetchPosts, client, usersDB, entriesDB, user, skapp)
-      triggerFn('new comments', fetchComments, client, usersDB, entriesDB, user, skapp)
+      triggerFn(
+        'new content',
+        fetchNewContent,
+        client,
+        usersDB,
+        entriesDB,
+        user,
+        skapp
+      )
+      triggerFn(
+        'new interactions',
+        fetchInteractions,
+        client,
+        usersDB,
+        entriesDB,
+        user,
+        skapp
+      )
+      triggerFn(
+        'new posts',
+        fetchPosts,
+        client,
+        usersDB,
+        entriesDB,
+        user,
+        skapp
+      )
+      triggerFn(
+        'new comments',
+        fetchComments,
+        client,
+        usersDB,
+        entriesDB,
+        user,
+        skapp
+      )
     }
 
   } catch (error) {
