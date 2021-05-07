@@ -1,11 +1,13 @@
 import { Collection } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { CONTENTRECORD_DAC_DATA_DOMAIN, DEBUG_ENABLED, FEED_DAC_DATA_DOMAIN, SOCIAL_DAC_DATA_DOMAIN } from '../consts';
-import { COLL_EVENTS, COLL_USERS } from '../database';
+import { COLL_EVENTS, COLL_LISTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
-import { EventType, IEvent, IUser } from '../types';
-import { IDictionary, Throttle } from '../types';
+import { EListType, EventType, IDictionary, IEvent, IList, IUser, Throttle } from '../types';
 import { downloadFile, settlePromises } from './utils';
+
+let allowListItems: string[];
+let blockListItems: string[];
 
 // fetchSkapps is a simple scraping algorithm that scrapes all known users
 // for new skapps those users have been using.
@@ -13,7 +15,15 @@ export async function fetchSkapps(database: MongoDB, client: SkynetClient, throt
   // fetch all collections
   const usersDB = await database.getCollection<IUser>(COLL_USERS);
   const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
-  
+  const listsDB = await database.getCollection<IList>(COLL_LISTS);
+
+  // fetch allowlist and blocklists
+  const allowList = await listsDB.findOne({ type: EListType.SKAPP_ALLOWLIST })
+  allowListItems = allowList ? allowList.items : [];
+
+  const blockList = await listsDB.findOne({ type: EListType.SKAPP_BLOCKLIST })
+  blockListItems = blockList ? blockList.items : [];
+
   // fetch a user cursor
   const userCursor = usersDB.find().sort({$natural: -1});
 
@@ -90,7 +100,11 @@ export async function fetchNewSkapps(
 
     // loop all of the skapps and add the ones we're missing
     for (const skapp of Object.keys(dict)) {
-      if (!map[skapp]) {
+      if (!map[skapp] && isValidSkappName(
+        skapp,
+        allowListItems,
+        blockListItems
+      )) {
         added++;
         skapps.push(skapp)
       }
@@ -116,4 +130,21 @@ export async function fetchNewSkapps(
   }
   
   return added;
+}
+
+function isValidSkappName(
+  skapp: string,
+  allowList: string[],
+  blockList: string[]
+): boolean {
+  // allowlist and blocklist overrule the validation
+  if (allowList.includes(skapp)) {
+    return true;
+  }
+  if (blockList.includes(skapp)) {
+    return false;
+  }
+
+  // by default only allow skapp names that have an hns address
+  return skapp.indexOf('.hns') !== -1
 }

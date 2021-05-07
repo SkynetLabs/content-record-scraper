@@ -102,6 +102,17 @@ export interface IUser {
   discoveredAt?: Date; // will only be set by leaderboard API (insta scrape)
 }
 
+export enum EListType {
+  SKAPP_ALLOWLIST = 'SKAPP_ALLOWLIST',
+  SKAPP_BLOCKLIST = 'SKAPP_BLOCKLIST',
+  USER_BLOCKLIST = 'USER_BLOCKLIST',
+}
+
+export interface IList {
+  type: EListType;
+  items: string[];
+}
+
 export interface IProfileIndex {
   version: number;
   profile: IMySkyUserProfile;
