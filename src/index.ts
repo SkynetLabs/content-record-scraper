@@ -12,7 +12,7 @@ const pThrottle = require('p-throttle');
 (async () => {
   // create a leaky bucket to limit the amount of requests we send the client
   const throttle = pThrottle({
-    limit: 100,
+    limit: 60,
     interval: 60_000
   });
 
