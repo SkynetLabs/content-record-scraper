@@ -39,7 +39,7 @@ export async function handler(
   // check whether we're not getting spammed
   if (scrape) {
     if (cache.has(userPK)) {
-      res.status(429).json({ error: "given 'userPK' was scraped recently" });
+      res.status(429).json({ error: `'${userPK}' was scraped recently` });
       return
     }
     cache.set(userPK, true, USER_SCRAPE_RATE_LIMIT_IN_S)
@@ -116,6 +116,15 @@ export async function handler(
       console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new interactions`);
     }
   } catch (error) {
+    if (error.response && error.response.status === 429) {
+      res.status(429).json({ error: `'${userPK}' scrape ran into rate limit` });
+      return
+    }
+    if (error.response && error.response.status === 490) {
+      res.status(500).json({ error: `error occurred while discovering user, err: 490 received from skynet` });
+      return
+    }
+
     console.log(`${new Date().toLocaleString()}: user ${userPK} scrape error, ${error.message}`);
     res.status(500).json({ error: `error occurred while discovering user, err: ${error.message}` });
     return
