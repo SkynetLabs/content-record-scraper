@@ -4,50 +4,74 @@ import { DEBUG_ENABLED, FEED_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { DataLink, EntryType, EventType, IContent, IEvent, IIndex, IUser, Throttle } from '../types';
-import { downloadFile, downloadNewEntries, settlePromises } from './utils';
+import { downloadFile, downloadNewEntries, exceedsLockTime, settlePromises } from './utils';
 
 // fetchPosts is a simple scraping algorithm that scrapes all known users
 // for new posts and re-posts from the Feed DAC
-export async function fetchPosts(database: MongoDB, client: SkynetClient, throttle: Throttle<number>): Promise<number> {
+export async function fetchPosts(database: MongoDB, client: SkynetClient, throttle: Throttle<number>, userPKToFetch?: string): Promise<number> {
   // fetch all collections
   const usersDB = await database.getCollection<IUser>(COLL_USERS);
   const entriesDB = await database.getCollection<IContent>(COLL_ENTRIES);
   const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // fetch a user cursor
-  const userCursor = usersDB.find().sort({$natural: -1});
+  const predicate = userPKToFetch ? { userPK: userPKToFetch } : {}
+  const userCursor = usersDB.find(predicate).sort({$natural: -1});
+  const users = await userCursor.toArray();
 
   // loop every user fetch new posts for all his skapps
-  // NOTE: the skapp list is updated by another cron
-  const promises = [];
-  while (await userCursor.hasNext()) {
-    const user = await userCursor.next();
-    for (const skapp of user.skapps) {
-      const promise = throttle(fetchEntries.bind(
-        null,
-        client,
-        usersDB,
-        entriesDB,
-        user,
-        skapp
-      ))()
+  let added = 0;
+  for (const user of users) {
+    const { userPK, postsLockedAt } = user
+    if (postsLockedAt && !exceedsLockTime(postsLockedAt)) {
+      console.log(`${new Date().toLocaleString()}: ${userPK} skip fetch posts entries, still locked`);
+      continue;
+    }
 
-      // catch unhandled promise rejections but don't handle the error, we'll
-      // process the error when all promises were settled
-      //
-      // tslint:disable-next-line: no-empty
-      promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
-      promises.push(promise)
+    // lock user
+    await usersDB.updateOne(
+      { userPK },
+      { $set: { postsLockedAt: new Date() } }
+    )
+
+    // fetch posts for this user
+    try {
+      const promises = [];
+      for (const skapp of user.skapps) {
+        const promise = throttle(fetchEntries.bind(
+          null,
+          client,
+          usersDB,
+          entriesDB,
+          user,
+          skapp
+        ))()
+
+        // catch unhandled promise rejections but don't handle the error, we'll
+        // process the error when all promises were settled
+        //
+        // tslint:disable-next-line: no-empty
+        promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
+        promises.push(promise)
+      }
+
+      // wait for all promises to be settled
+      added += await settlePromises(
+        eventsDB,
+        EventType.FETCHPOSTS_ERROR,
+        promises,
+        'fetchPosts' // context for console.log
+      )  
+    } finally {
+      // unlock the user
+      await usersDB.updateMany(
+        { userPK },
+        { $set: { postsLockedAt: null } }
+      )
     }
   }
 
-  // wait for all promises to be settled
-  return await settlePromises(
-    eventsDB,
-    EventType.FETCHPOSTS_ERROR,
-    promises,
-    'fetchPosts' // context for console.log
-  )
+  return added;
 }
 
 export async function fetchEntries(
@@ -63,8 +87,8 @@ export async function fetchEntries(
   const domain = FEED_DAC_DATA_DOMAIN;
 
   // grab some info from the user object
-  const {
-    userPK,
+  const { userPK } = user;
+  let{
     postsCurrPage,
     postsCurrNumEntries,
     cachedDataLinks,
@@ -86,24 +110,9 @@ export async function fetchEntries(
   if (!index || cached) {
     return 0; // no file found or no changes since last download
   }
-
-  // immediately update curr page and curr num entries with the values in the
-  // index file, this is not ideal as we might miss entries if the download
-  // fails, but it's better than counting entries twice
-  const { currPageNumber, currPageNumEntries } = index;
-  postsCurrPage[skapp] = currPageNumber;
-  postsCurrNumEntries[skapp] = currPageNumEntries;
-  await userDB.updateOne(
-    { userPK },
-    {
-      $set: {
-        postsCurrPage,
-        postsCurrNumEntries,
-      }  
-    }
-  )
-
+  
   // download pages up until curr page
+  const { currPageNumber, currPageNumEntries } = index;
   for (let p = Number(currPage); p < currPageNumber; p++) {
     const path = `${domain}/${skapp}/posts/page_${p}.json`;
     [entries,] = await downloadNewEntries(
@@ -140,20 +149,32 @@ export async function fetchEntries(
   }
 
   // insert entries
-  const numEntries = operations.length
-  if (numEntries) {
+  const numEntriesAdded = operations.length
+  if (numEntriesAdded) {
     await entriesDB.bulkWrite(operations)
   }
 
-  // update the cached data links, refresh so we don't overwrite prior updates
+  // refresh user before updates
   user = await userDB.findOne({ userPK })
-  const cachedDataLinksUpdate = { ...user.cachedDataLinks }
-  cachedDataLinksUpdate[indexPath] = indexDataLink;
-  cachedDataLinksUpdate[currPagePath] = currPageDataLink;
+  postsCurrPage = user.postsCurrPage
+  postsCurrNumEntries = user.postsCurrNumEntries
+  cachedDataLinks = user.cachedDataLinks
+
+  // update user with new props
+  postsCurrPage[skapp] = currPageNumber;
+  postsCurrNumEntries[skapp] = currPageNumEntries;
+  cachedDataLinks[indexPath] = indexDataLink;
+  cachedDataLinks[currPagePath] = currPageDataLink;
   await userDB.updateOne(
     { userPK },
-    { $set: { cachedDataLinks: cachedDataLinksUpdate }}
+    {
+      $set: {
+        postsCurrPage,
+        postsCurrNumEntries,
+        cachedDataLinks
+      }  
+    }
   )
 
-  return numEntries
+  return numEntriesAdded;
 }

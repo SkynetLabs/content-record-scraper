@@ -4,51 +4,74 @@ import { CONTENTRECORD_DAC_DATA_DOMAIN, DEBUG_ENABLED } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
 import { MongoDB } from '../database/mongodb';
 import { DataLink, EntryType, EventType, IContent, IEvent, IIndex, IUser, Throttle } from '../types';
-import { downloadFile, downloadNewEntries, settlePromises } from './utils';
+import { downloadFile, downloadNewEntries, exceedsLockTime, settlePromises } from './utils';
 
 // fetchInteractions is a simple scraping algorithm that scrapes all known users
 // for content interaction entries.
-export async function fetchInteractions(database: MongoDB, client: SkynetClient, throttle: Throttle<number>): Promise<number> {
+export async function fetchInteractions(database: MongoDB, client: SkynetClient, throttle: Throttle<number>, userPKToFetch?: string): Promise<number> {
   // fetch all collections
   const usersDB = await database.getCollection<IUser>(COLL_USERS);
   const entriesDB = await database.getCollection<IContent>(COLL_ENTRIES);
   const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
   
   // fetch a user cursor
-  const userCursor = usersDB.find().sort({$natural: -1});
+  const predicate = userPKToFetch ? { userPK: userPKToFetch } : {}
+  const userCursor = usersDB.find(predicate).sort({$natural: -1});
+  const users = await userCursor.toArray();
 
   // loop every user fetch new interactions for all his skapps
-  // NOTE: the skapp list is updated by another cron
-  const promises = [];
-  while (await userCursor.hasNext()) {
-    const user = await userCursor.next();
+  let added = 0;
+  for (const user of users) {
+    const { userPK, interactionsLockedAt } = user;
+    if (interactionsLockedAt && !exceedsLockTime(interactionsLockedAt)) {
+      console.log(`${new Date().toLocaleString()}: ${user.userPK} skip fetch posts entries, still locked`);
+      continue;
+    }
 
-    for (const skapp of user.skapps) {
-      const promise = throttle(fetchEntries.bind(
-        null,
-        client,
-        usersDB,
-        entriesDB,
-        user,
-        skapp
-      ))()
+    // lock user
+    await usersDB.updateOne(
+      { userPK },
+      { $set: { interactionsLockedAt: new Date() } }
+    )
 
-      // catch unhandled promise rejections but don't handle the error, we'll
-      // process the error when all promises were settled
-      //
-      // tslint:disable-next-line: no-empty
-      promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
-      promises.push(promise)
+    // fetch interactions for this user
+    try {
+      const promises = [];
+      for (const skapp of user.skapps) {
+        const promise = throttle(fetchEntries.bind(
+          null,
+          client,
+          usersDB,
+          entriesDB,
+          user,
+          skapp
+        ))()
+
+        // catch unhandled promise rejections but don't handle the error, we'll
+        // process the error when all promises were settled
+        //
+        // tslint:disable-next-line: no-empty
+        promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
+        promises.push(promise)
+      }
+
+      // wait for all promises to be settled
+      added += await settlePromises(
+        eventsDB,
+        EventType.FETCHINTERACTIONS_ERROR,
+        promises,
+        'fetchInteractions' // context for console.log
+      )
+    } finally {
+      // unlock the user
+      await usersDB.updateMany(
+        { userPK },
+        { $set: { interactionsLockedAt: null } }
+      )
     }
   }
 
-  // wait for all promises to be settled
-  return await settlePromises(
-    eventsDB,
-    EventType.FETCHINTERACTIONS_ERROR,
-    promises,
-    'fetchInteractions' // context for console.log
-  )
+  return added;
 }
 
 export async function fetchEntries(
@@ -62,8 +85,8 @@ export async function fetchEntries(
   let operations: BulkWriteOperation<IContent>[] = [];
   
   // grab some info from the user object
-  const {
-    userPK,
+  const { userPK } = user;
+  let{
     contentInteractionsCurrPage,
     contentInteractionsNumEntries,
     cachedDataLinks,
@@ -86,24 +109,9 @@ export async function fetchEntries(
   if (!index || cached) {
     return 0; // no file found or no changes since last download
   }
-  
-  // immediately update curr page and curr num entries with the values in the
-  // index file, this is not ideal as we might miss entries if the download
-  // fails, but it's better than counting entries twice
-  const { currPageNumber, currPageNumEntries } = index;
-  contentInteractionsCurrPage[skapp] = currPageNumber;
-  contentInteractionsNumEntries[skapp] = currPageNumEntries;
-  await userDB.updateOne(
-    { userPK },
-    {
-      $set: {
-        contentInteractionsCurrPage,
-        contentInteractionsNumEntries,
-      }  
-    }
-  )
 
   // download pages up until curr page
+  const { currPageNumber, currPageNumEntries } = index;
   for (let p = Number(currPage); p < currPageNumber; p++) {
     const path = `${domain}/${skapp}/interactions/page_${p}.json`;
     [entries,] = await downloadNewEntries(
@@ -140,20 +148,32 @@ export async function fetchEntries(
   }
 
   // insert entries
-  const numEntries = operations.length
-  if (numEntries) {
+  const numEntriesAdded = operations.length
+  if (numEntriesAdded) {
     await entriesDB.bulkWrite(operations)
   }
 
-  // update the cached data links, refresh so we don't overwrite prior updates
+  // refresh user before updates
   user = await userDB.findOne({ userPK })
-  const cachedDataLinksUpdate = { ...user.cachedDataLinks }
-  cachedDataLinksUpdate[indexPath] = indexDataLink;
-  cachedDataLinksUpdate[currPagePath] = currPageDataLink;
+  contentInteractionsCurrPage = user.contentInteractionsCurrPage
+  contentInteractionsNumEntries = user.contentInteractionsNumEntries
+  cachedDataLinks = user.cachedDataLinks
+
+  // update user with new props
+  contentInteractionsCurrPage[skapp] = currPageNumber;
+  contentInteractionsNumEntries[skapp] = currPageNumEntries;
+  cachedDataLinks[indexPath] = indexDataLink;
+  cachedDataLinks[currPagePath] = currPageDataLink;
   await userDB.updateOne(
     { userPK },
-    { $set: { cachedDataLinks: cachedDataLinksUpdate }}
+    {
+      $set: {
+        contentInteractionsCurrPage,
+        contentInteractionsNumEntries,
+        cachedDataLinks
+      }  
+    }
   )
 
-  return numEntries;
+  return numEntriesAdded;
 }

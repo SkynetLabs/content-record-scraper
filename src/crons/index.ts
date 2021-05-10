@@ -17,24 +17,15 @@ import { fetchSkyFeedUsers } from './fetch_skyfeed_users';
 import { fetchSocialGraph } from './fetch_social_graph';
 import { fetchUserProfiles } from './fetch_user_profiles';
 
-// tslint:disable-next-line: no-require-imports no-var-requires
-const pThrottle = require('p-throttle');
-
 const CRON_TIME_EVERY_15 = '0 */15 * * * *' // every 15'
 const CRON_TIME_DEV = '*/30 * * * * *' // every minute.
 
-export async function init(client: SkynetClient): Promise<void> {
+export async function init(client: SkynetClient, throttle: Throttle<number>): Promise<void> {
   console.log(`${new Date().toLocaleString()}: Starting cronjobs on ${DEBUG_ENABLED? 'debug': 'production'} schedule`);
 
   // create a connection with the database and fetch the users DB
   const database = await MongoDB.Connection();
   const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
-
-  // create a leaky bucket to limit the amount of requests we send the client
-  const throttle = pThrottle({
-    limit: 100,
-    interval: 60_000
-  });
 
   const fetchUserProfilesMutex = new Mutex();
   startCronJob(

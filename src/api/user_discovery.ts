@@ -1,16 +1,17 @@
 import { Request, Response } from 'express';
-import { Collection } from 'mongodb';
-import { fetchEntries as fetchComments } from "../crons/fetch_comments";
-import { fetchEntries as fetchInteractions } from "../crons/fetch_interactions";
-import { fetchEntries as fetchNewContent } from "../crons/fetch_newcontent";
-import { fetchEntries as fetchPosts } from "../crons/fetch_posts";
+import NodeCache from 'node-cache';
+import { SkynetClient } from 'skynet-js';
+import { USER_SCRAPE_RATE_LIMIT_IN_S } from '../consts';
+import { fetchComments } from "../crons/fetch_comments";
+import { fetchInteractions } from "../crons/fetch_interactions";
+import { fetchNewContent } from "../crons/fetch_newcontent";
+import { fetchPosts } from "../crons/fetch_posts";
 import { fetchNewSkapps } from "../crons/fetch_skapps";
 import { fetchProfiles } from "../crons/fetch_user_profiles";
-import { SkynetClient } from 'skynet-js';
-import { EventType, IContent, IEvent, IUser } from '../types';
+import { COLL_EVENTS, COLL_USERS } from '../database';
+import { MongoDB } from '../database/mongodb';
 import { upsertUser } from '../database/utils';
-import NodeCache from 'node-cache'
-import { USER_SCRAPE_RATE_LIMIT_IN_S } from '../consts';
+import { EventType, IEvent, IUser, Throttle } from '../types';
 
 const cache = new NodeCache()
 
@@ -18,9 +19,8 @@ export async function handler(
   req: Request,
   res: Response,
   client: SkynetClient,
-  usersDB: Collection<IUser>,
-  entriesDB: Collection<IContent>,
-  eventsDB: Collection<IEvent>,
+  throttle: Throttle<number>,
+  database: MongoDB
 ): Promise<void> {
   // fetch 'userPK' param from request
   const userPK = req.query.userPK || ""
@@ -45,6 +45,10 @@ export async function handler(
     cache.set(userPK, true, USER_SCRAPE_RATE_LIMIT_IN_S)
     console.log(`${new Date().toLocaleString()}: scraping user ${userPK}`);
   }
+
+  // fetch collections
+  const usersDB = await database.getCollection<IUser>(COLL_USERS);
+  const eventsDB = await database.getCollection<IEvent>(COLL_EVENTS);
 
   // upsert the user and log a discovery event in case it was an unknown user
   const discovered = await upsertUser(usersDB, userPK)
@@ -92,61 +96,25 @@ export async function handler(
       console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new skapps`);
     }
 
-    // refetch the user to get skapp list
-    user = await usersDB.findOne({ userPK })
-    if (!user) {
-      res.status(404).json({ error: `user not found` });
-      return
+    found = await fetchPosts(database, client, throttle, userPK)
+    if (found) {
+      console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new posts`);
     }
 
-    // now loop all skapps and fire a scrape event
-    for (const skapp of user.skapps) {
-      try {
-        found = await fetchNewContent(
-          client,
-          usersDB,
-          entriesDB,
-          user,
-          skapp
-        )
-        if (found) {
-          console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new content entries`);
-        }
-        found = await fetchInteractions(
-          client,
-          usersDB,
-          entriesDB,
-          user,
-          skapp
-        )
-        if (found) {
-          console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new interaction entries`);
-        }
-        found = await fetchPosts(
-          client,
-          usersDB,
-          entriesDB,
-          user,
-          skapp
-        );
-        if (found) {
-          console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new post entries`);
-        }
-        found = await fetchComments(
-          client,
-          usersDB,
-          entriesDB,
-          user,
-          skapp
-        )
-        if (found) {
-          console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new comment entries`);
-        }
-      } catch (error) {
-        console.log(`${new Date().toLocaleString()}: error scraping ${skapp} for user '${user.userPK}'`, error)
-      }
+    found = await fetchComments(database, client, throttle, userPK)
+    if (found) {
+      console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new comments`);
     }
 
+    found = await fetchNewContent(database, client, throttle, userPK)
+    if (found) {
+      console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new content entries`);
+    }
+
+    found = await fetchInteractions(database, client, throttle, userPK)
+    if (found) {
+      console.log(`${new Date().toLocaleString()}: ${userPK}, found ${found} new interactions`);
+    }
   } catch (error) {
     console.log(`${new Date().toLocaleString()}: user ${userPK} scrape error, ${error.message}`);
     res.status(500).json({ error: `error occurred while discovering user, err: ${error.message}` });

@@ -219,6 +219,15 @@ export function shouldRun(noResultsCnt: number): boolean {
   return Math.random() <= pctChance
 }
 
+export function exceedsLockTime(lockedAt: Date): boolean {
+  // allow a max lock on the user for a period of 3h, this is very very
+  // conservative but we only want to ensure a user is not locked forever
+  const ts = new Date().getTime()
+  const elapsed = lockedAt.getTime() - ts
+  const hours = Math.ceil(elapsed / (1000 * 3600))
+  return hours >= 3;
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }

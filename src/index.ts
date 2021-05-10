@@ -5,8 +5,17 @@ import { init as initCrons } from './crons';
 import { init as initDB } from './database';
 import { MongoDB } from './database/mongodb';
 
+// tslint:disable-next-line: no-require-imports no-var-requires
+const pThrottle = require('p-throttle');
+
 // tslint:disable-next-line: no-floating-promises
 (async () => {
+  // create a leaky bucket to limit the amount of requests we send the client
+  const throttle = pThrottle({
+    limit: 100,
+    interval: 60_000
+  });
+
   // init client
   let client: SkynetClient
   try {
@@ -33,7 +42,7 @@ import { MongoDB } from './database/mongodb';
 
   // init crons
   try {
-    await initCrons(client);
+    await initCrons(client, throttle);
   } catch (error) {
     console.log(`${new Date().toLocaleString()}: Failed to initialize cronjobs, error: \n\n`, error);
     process.exit(1);
@@ -41,7 +50,7 @@ import { MongoDB } from './database/mongodb';
 
   // init API
   try {
-    await initAPI(client, mongoDB, SCRAPERAPI_PORT);
+    await initAPI(client, throttle, mongoDB, SCRAPERAPI_PORT);
     console.log(`${new Date().toLocaleString()}: Initialized API at port ${SCRAPERAPI_PORT}`);
   } catch (error) {
     console.log(`${new Date().toLocaleString()}: Failed to initialize the API, error: \n\n`, error);

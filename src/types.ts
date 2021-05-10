@@ -97,6 +97,12 @@ export interface IUser {
   mySkyProfile?: IProfileIndex;
   skyIDProfile?: IUserProfile;
 
+  // lock for every cron adding entries to avoid race conditions
+  interactionsLockedAt?: Date;
+  newContentLockedAt?: Date;
+  commentsLockedAt?: Date;
+  postsLockedAt?: Date;
+
   createdAt: Date;
   discoveredAt?: Date; // will only be set by leaderboard API (insta scrape)
 }
