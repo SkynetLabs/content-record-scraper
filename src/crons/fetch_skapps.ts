@@ -25,12 +25,13 @@ export async function fetchSkapps(database: MongoDB, client: SkynetClient, throt
   blockListItems = blockList ? blockList.items || [] : [];
 
   // fetch a user cursor
-  const userCursor = usersDB.find().sort({$natural: -1});
+  const userCursor = usersDB.find().sort({ $natural: -1 });
+  const users = await userCursor.toArray()
 
   // loop every user and kickstart an indexation
-  const promises = [];
-  while (await userCursor.hasNext()) {
-    const user = await userCursor.next();
+  let added = 0;
+  for (const user of users) {
+    const promises = [];
     const promise = throttle(fetchNewSkapps.bind(
       null,
       client,
@@ -44,15 +45,17 @@ export async function fetchSkapps(database: MongoDB, client: SkynetClient, throt
     // tslint:disable-next-line: no-empty
     promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
     promises.push(promise)
+
+    // wait for all promises to be settled
+    added += await settlePromises(
+      eventsDB,
+      EventType.FETCHSKAPPS_ERROR,
+      promises,
+      'fetchSkapps'
+    );
   }
 
-  // wait for all promises to be settled
-  return await settlePromises(
-    eventsDB,
-    EventType.FETCHSKAPPS_ERROR,
-    promises,
-    'fetchSkapps'
-  );
+  return added;
 }
 
 export async function fetchNewSkapps(

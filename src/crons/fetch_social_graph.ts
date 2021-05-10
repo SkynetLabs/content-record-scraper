@@ -41,12 +41,12 @@ export async function fetchSocialGraph(database: MongoDB, client: SkynetClient, 
 
   // fetch a user cursor
   const userCursor = usersDB.find().sort({$natural: -1});
+  const userEntities = await userCursor.toArray()
 
   // loop every user and kickstart an indexation
-  const promises = [];
-  while (await userCursor.hasNext()) {
-    const user = await userCursor.next();
-
+  let added = 0;
+  for (const user of userEntities) {
+    const promises = [];
     for (const skapp of user.skapps) {
       const promise = throttle(fetchFollowing.bind(
         null,
@@ -64,15 +64,17 @@ export async function fetchSocialGraph(database: MongoDB, client: SkynetClient, 
       promise.catch((err) => { if (DEBUG_ENABLED) { console.log(err.message) }})
       promises.push(promise)
     }
+
+    // wait for all promises to be settled
+    added += await settlePromises(
+      eventsDB,
+      EventType.FETCHSOCIALGRAPH_ERROR,
+      promises,
+      'fetchSocialGraph' // context for console.log
+    )
   }
 
-  // wait for all promises to be settled
-  return await settlePromises(
-    eventsDB,
-    EventType.FETCHSOCIALGRAPH_ERROR,
-    promises,
-    'fetchSocialGraph' // context for console.log
-  )
+  return added
 }
 
 export async function fetchFollowing(

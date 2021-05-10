@@ -19,11 +19,11 @@ export async function fetchUserProfiles(database: MongoDB, client: SkynetClient,
 
   // fetch a user cursor
   const userCursor = usersDB.find().sort({$natural: -1});
+  const users = await userCursor.toArray()
 
   // loop every user and kickstart an indexation
   const promises = [];
-  while (await userCursor.hasNext()) {
-    const user = await userCursor.next();
+  for (const user of users) {
     const promise = throttle(fetchProfiles.bind(
       null,
       client,
