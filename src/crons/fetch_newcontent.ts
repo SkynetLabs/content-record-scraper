@@ -22,7 +22,10 @@ export async function fetchNewContent(database: MongoDB, client: SkynetClient, t
   // loop every user fetch new content for all his skapps
   // NOTE: the skapp list is updated by another cron
   let added = 0;
-  for (const user of users) {
+  for (let user of users) {
+    // refetch user (TODO: handle better, this is to avoid lock race conditions)
+    user = await usersDB.findOne({ userPK: user.userPK })
+
     const { userPK, newContentLockedAt } = user;
     if (newContentLockedAt && !exceedsLockTime(newContentLockedAt)) {
       console.log(`${new Date().toLocaleString()}: ${user.userPK} skip fetch new content entries, still locked`);

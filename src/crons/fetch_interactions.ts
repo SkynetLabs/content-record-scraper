@@ -21,7 +21,10 @@ export async function fetchInteractions(database: MongoDB, client: SkynetClient,
 
   // loop every user fetch new interactions for all his skapps
   let added = 0;
-  for (const user of users) {
+  for (let user of users) {
+    // refetch user (TODO: handle better, this is to avoid lock race conditions)
+    user = await usersDB.findOne({ userPK: user.userPK })
+
     const { userPK, interactionsLockedAt } = user;
     if (interactionsLockedAt && !exceedsLockTime(interactionsLockedAt)) {
       console.log(`${new Date().toLocaleString()}: ${user.userPK} skip fetch interaction entries, still locked`);

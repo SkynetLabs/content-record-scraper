@@ -21,7 +21,10 @@ export async function fetchComments(database: MongoDB, client: SkynetClient, thr
 
   // loop every user fetch new comments for all his skapps
   let added = 0;
-  for (const user of users) {
+  for (let user of users) {
+    // refetch user (TODO: handle better, this is to avoid lock race conditions)
+    user = await usersDB.findOne({ userPK: user.userPK })
+
     const { userPK, commentsLockedAt } = user
     if (commentsLockedAt && !exceedsLockTime(commentsLockedAt)) {
       console.log(`${new Date().toLocaleString()}: ${userPK} skip fetch comment entries, still locked`);
