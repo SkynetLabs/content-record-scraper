@@ -222,7 +222,7 @@ export function shouldRun(noResultsCnt: number): boolean {
 export function exceedsLockTime(lockedAt: Date): boolean {
   // allow a max lock on the user for a period of 1h
   const ts = new Date().getTime()
-  const elapsed = lockedAt.getTime() - ts
+  const elapsed = ts-lockedAt.getTime()
   const hours = Math.floor(elapsed / (1000 * 3600))
   return hours >= 1;
 }
