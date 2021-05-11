@@ -69,7 +69,7 @@ export async function fetchPosts(database: MongoDB, client: SkynetClient, thrott
       // unlock the user
       await usersDB.updateMany(
         { userPK },
-        { $set: { postsLockedAt: null } }
+        { $unset: { postsLockedAt: "" } }
       )
     }
   }

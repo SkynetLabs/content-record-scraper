@@ -69,7 +69,7 @@ export async function fetchComments(database: MongoDB, client: SkynetClient, thr
       // unlock the user
       await usersDB.updateMany(
         { userPK },
-        { $set: { commentsLockedAt: null } }
+        { $unset: { commentsLockedAt: "" } }
       )
     }
   }

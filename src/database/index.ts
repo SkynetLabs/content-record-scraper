@@ -73,6 +73,16 @@ export async function init(): Promise<MongoDB> {
     { upsert: true }
   )
   
+  // unlock all users
+  await users.updateMany({}, {
+    $unset: {
+      interactionsLockedAt: "",
+      newContentLockedAt: "",
+      commentsLockedAt: "",
+      postsLockedAt: "",
+    }
+  })
+
   console.log(`${new Date().toLocaleString()}: DB initialized.`)
   return mongo;
 }

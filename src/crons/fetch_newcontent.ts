@@ -70,7 +70,7 @@ export async function fetchNewContent(database: MongoDB, client: SkynetClient, t
       // unlock the user
       await usersDB.updateMany(
         { userPK },
-        { $set: { newContentLockedAt: null } }
+        { $unset: { newContentLockedAt: "" } }
       )
     }
   }
