@@ -25,7 +25,7 @@ export async function fetchNewContent(database: MongoDB, client: SkynetClient, t
   for (const user of users) {
     const { userPK, newContentLockedAt } = user;
     if (newContentLockedAt && !exceedsLockTime(newContentLockedAt)) {
-      console.log(`${new Date().toLocaleString()}: ${user.userPK} skip fetch posts entries, still locked`);
+      console.log(`${new Date().toLocaleString()}: ${user.userPK} skip fetch new content entries, still locked`);
       continue;
     }
 

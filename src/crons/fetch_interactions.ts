@@ -24,7 +24,7 @@ export async function fetchInteractions(database: MongoDB, client: SkynetClient,
   for (const user of users) {
     const { userPK, interactionsLockedAt } = user;
     if (interactionsLockedAt && !exceedsLockTime(interactionsLockedAt)) {
-      console.log(`${new Date().toLocaleString()}: ${user.userPK} skip fetch posts entries, still locked`);
+      console.log(`${new Date().toLocaleString()}: ${user.userPK} skip fetch interaction entries, still locked`);
       continue;
     }
 
