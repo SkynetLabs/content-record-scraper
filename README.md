@@ -9,12 +9,12 @@ different DACs:
 - Feed DAC
 - Social DAC
 
- It will periodically download the index and page files used by these DACs and
- persist whatever content is in them into a Mongo database. By doing so we
- essentially collect a database of content and users, and have all the means to
- discover relationships between them. Which user is creating the most content,
- which skapp is most popular, what user interacts with what type of content and
- so on.
+It will periodically download the index and page files used by these DACs and
+persist whatever content is in them into a Mongo database. By doing so we
+essentially collect a database of content and users, and have all the means to
+discover relationships between them. Which user is creating the most content,
+which skapp is most popular, what user interacts with what type of content and
+so on.
 
 ## Data Model
 
@@ -57,7 +57,7 @@ following cronjobs:
 - fetch user profiles
 - fetch skyfeed users
 - fetch comments (Feed DAC)
-- fetch posts  (Feed DAC)
+- fetch posts (Feed DAC)
 - fetch new content (CR DAC)
 - fetch interactions (CR DAC)
 
@@ -149,3 +149,8 @@ user record manually. See `utils.ts` for an example of an empty user object.
 
 You can do this through the mongo shell or use a mongo client like Robo3T or
 MongoDB Compass. **We bootstrap a bunch of users when the scraper starts.**
+
+## scripts
+
+The script folder contains a `publish.sh` that will build the image and publish
+it to our docker hub.
