@@ -1,4 +1,4 @@
-import { BulkWriteOperation, Collection } from 'mongodb';
+import { BulkWriteOperation, Collection, CollectionBulkWriteOptions } from 'mongodb';
 import { SkynetClient } from 'skynet-js';
 import { DEBUG_ENABLED, FEED_DAC_DATA_DOMAIN } from '../consts';
 import { COLL_ENTRIES, COLL_EVENTS, COLL_USERS } from '../database';
@@ -154,7 +154,9 @@ export async function fetchEntries(
   // insert entries
   const numEntriesAdded = operations.length
   if (numEntriesAdded) {
-    await entriesDB.bulkWrite(operations)
+    // NOTE that the library does not support 'checkKeys', but the driver
+    // properly passes it to the MongoDB engine
+    await entriesDB.bulkWrite(operations, { checkKeys: false } as CollectionBulkWriteOptions)
   }
 
   // refresh user before updates
