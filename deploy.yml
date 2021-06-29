@@ -7,6 +7,8 @@ services:
     env:
       - DEBUG_ENABLED=false
       - MONGO_CONNECTION_STRING=mongodb://mongo:27017
+      # - SKYNET_JWT=<my-jwt>
+      # - SKYNET_PORTAL_URL=https://siasky.net
     depends_on:
       - service: mongo
   leaderboard-api:
