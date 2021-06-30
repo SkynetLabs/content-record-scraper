@@ -154,3 +154,12 @@ MongoDB Compass. **We bootstrap a bunch of users when the scraper starts.**
 
 The script folder contains a `publish.sh` that will build the image and publish
 it to our docker hub.
+
+## Deploying on Akash
+
+[See the example deploy.yml](./deploy.yml) which can be deployed as-is on 
+Akash, or customised to set your own domain and `SKYNET_JWT`, or open access 
+to the included MongoDB container.
+
+Refer to the [Akash Docs](https://docs.akash.network/guides/deployment) for 
+more information on deploying on Akash.

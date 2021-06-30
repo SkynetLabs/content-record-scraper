@@ -1,0 +1,92 @@
+---
+version: "2.0"
+
+services:
+  content-record-scraper:
+    image: skynetlabs/content-record-scraper
+    env:
+      - DEBUG_ENABLED=false
+      - MONGO_CONNECTION_STRING=mongodb://mongo:27017
+      # - SKYNET_JWT=<my-jwt>
+      # - SKYNET_PORTAL_URL=https://siasky.net
+    depends_on:
+      - service: mongo
+  leaderboard-api:
+    image: skynetlabs/leaderboard-api
+    env:
+      - MONGO_CONNECTION_STRING=mongodb://mongo:27017
+      - DEBUG_ENABLED=false
+      - LEADERBOARDAPI_PORT=4000
+    # depends_on:
+    #   - service: mongo
+    expose:
+      - port: 4000
+        as: 80
+        to:
+          - global: true
+        accept:
+          - my.domain.com
+  mongo:
+    image: bitnami/mongodb:4.2
+    env:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    expose:
+      - port: 27017
+        to:
+          # - global: true # uncomment to access Mongo externally
+          - service: content-record-scraper
+          # - service: leaderboard-api
+
+profiles:
+  compute:
+    content-record-scraper:
+      resources:
+        cpu:
+          units: 1
+        memory:
+          size: 2Gi
+        storage:
+          size: 1Gi
+    leaderboard-api:
+      resources:
+        cpu:
+          units: 0.5
+        memory:
+          size: 1Gi
+        storage:
+          size: 1Gi
+    mongo:
+      resources:
+        cpu:
+          units: 0.5
+        memory:
+          size: 1Gi
+        storage:
+          size: 1Gi
+  placement:
+    dcloud:
+      pricing:
+        content-record-scraper:
+          denom: uakt
+          amount: 10
+        leaderboard-api:
+          denom: uakt
+          amount: 10
+        mongo:
+          denom: uakt
+          amount: 10
+
+deployment:
+  content-record-scraper:
+    dcloud:
+      profile: content-record-scraper
+      count: 1
+  leaderboard-api:
+    dcloud:
+      profile: leaderboard-api
+      count: 1
+  mongo:
+    dcloud:
+      profile: mongo
+      count: 1
